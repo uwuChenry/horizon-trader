@@ -1,0 +1,28 @@
+# PLACEHOLDER for the always-on server (phase 4+). Not used yet.
+# IB Gateway image below is a community image that bundles IBC (automated login/restarts);
+# verify its current env vars and tags before relying on it.
+services:
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:stable
+    restart: unless-stopped
+    env_file: ../.env            # TWS_USERID / TWS_PASSWORD live only in .env
+    environment:
+      TRADING_MODE: paper
+    ports:
+      - "127.0.0.1:4002:4004"    # paper API; confirm the image's port mapping
+
+  bot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file: ../.env
+    environment:
+      IB_HOST: ib-gateway
+    volumes:
+      - ht-data:/data
+    depends_on: [ib-gateway]
+    # Run on a schedule instead of a loop: e.g. host cron / systemd timer calling
+    #   docker compose run --rm bot
+
+volumes:
+  ht-data:
