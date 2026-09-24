@@ -1,0 +1,14 @@
+# Linux box without Docker. Install:
+#   sudo cp deploy/systemd/horizon-trader.* /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now horizon-trader.timer
+# Adjust User and WorkingDirectory to your clone.
+[Unit]
+Description=horizon-trader daily run
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=trader
+WorkingDirectory=/home/trader/horizon-trader
+ExecStart=/home/trader/.local/bin/uv run --no-dev python -m horizon_trader.run_daily --dry-run

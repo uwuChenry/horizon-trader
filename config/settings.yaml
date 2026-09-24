@@ -1,0 +1,23 @@
+# Allocations are fractions of account equity; they must sum to <= 1.0 (the rest stays in cash).
+# Each sleeve returns weights of *its own* capital; the portfolio layer scales and nets them.
+
+account:
+  starting_cash: 5000
+
+universe: [SPY, QQQ, IWM, EFA, EEM, TLT, IEF, GLD]
+
+sleeves:
+  # Placeholder until the real sleeves land (phase 2): position = momentum rotation, swing = mean reversion.
+  core_static:
+    type: static
+    allocation: 0.9
+    params:
+      weights: {SPY: 0.6, IEF: 0.4}
+
+risk:
+  max_weight: 0.6   # per-ticker cap after netting
+  max_gross: 1.0    # no leverage
+
+execution:
+  min_trade_value: 25   # skip dust trades (USD)
+  share_decimals: 4     # IBKR fractional shares
