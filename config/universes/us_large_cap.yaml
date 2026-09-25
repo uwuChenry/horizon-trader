@@ -1,0 +1,15 @@
+# ~100 US large caps, roughly the S&P 100 as of 2025 (hand-maintained, not point-in-time).
+#
+# SURVIVORSHIP BIAS: these are today's winners. Backtesting them over 2010+ skips the
+# companies that shrank out of the large-cap club, which flatters long-only returns and
+# anything momentum-like. Always compare an alpha against the equal-weight portfolio of
+# this same list (the evaluate/backtest commands do), which cancels much of the bias.
+symbols: [
+  AAPL, ABBV, ABT, ACN, ADBE, AIG, AMD, AMGN, AMT, AMZN, AVGO, AXP, BA, BAC, BK, BKNG,
+  BLK, BMY, BRK-B, C, CAT, CHTR, CL, CMCSA, COF, COP, COST, CRM, CSCO, CVS, CVX, DE,
+  DHR, DIS, DUK, EMR, F, FDX, GD, GE, GILD, GM, GOOGL, GS, HD, HON, IBM, INTC, INTU,
+  ISRG, JNJ, JPM, KHC, KO, LIN, LLY, LMT, LOW, MA, MCD, MDLZ, MDT, MET, META, MMM, MO,
+  MRK, MS, MSFT, NEE, NFLX, NKE, NOW, NVDA, ORCL, PEP, PFE, PG, PLTR, PM, PYPL, QCOM,
+  RTX, SBUX, SCHW, SO, SPG, T, TGT, TMO, TMUS, TSLA, TXN, UBER, UNH, UNP, UPS, USB, V,
+  VZ, WFC, WMT, XOM,
+]

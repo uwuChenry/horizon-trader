@@ -66,9 +66,9 @@ def test_bar_store_caches_until_tomorrow(tmp_path, monkeypatch):
     def source(symbols):
         calls.append(symbols)
         idx = pd.bdate_range("2021-01-04", periods=3)
-        return {
-            s: pd.DataFrame({"open": [1.0, 2, 3], "close": [1.5, 2.5, 3.5]}, idx) for s in symbols
-        }
+        ohlcv = {"open": [1.0, 2, 3], "high": [2.0, 3, 4], "low": [0.5, 1, 2]}
+        ohlcv |= {"close": [1.5, 2.5, 3.5], "volume": [100, 200, 300]}
+        return {s: pd.DataFrame(ohlcv, idx) for s in symbols}
 
     first = load_bars(["SPY", "TLT"], source=source)
     second = load_bars(["SPY", "TLT"], start="2021-01-05", source=source)

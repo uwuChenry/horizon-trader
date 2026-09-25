@@ -43,6 +43,7 @@ PARAM_GRIDS: dict[str, dict[str, list[Any]]] = {
     "vol_managed": {"target_vol": [0.10, 0.15, 0.20], "window": [21, 63]},
     "mean_reversion": {"entry": [5, 10, 15], "exit": [60, 70, 80]},
     "macd": {"fast": [8, 12, 16], "slow": [21, 26, 39]},
+    "alpha": {"top_n": [3, 5, 10], "rebalance": ["monthly", "weekly"]},
 }
 
 Bars = dict[str, pd.DataFrame]

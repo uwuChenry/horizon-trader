@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from horizon_trader.config import SleeveSettings
+from horizon_trader.sleeves.alpha import AlphaSleeve
 from horizon_trader.sleeves.base import PanelSleeve, Sleeve
 from horizon_trader.sleeves.macd import MacdSleeve
 from horizon_trader.sleeves.mean_reversion import MeanReversionSleeve
@@ -18,6 +19,7 @@ SLEEVE_TYPES = {
     "trend_following": TrendFollowingSleeve,
     "vol_managed": VolManagedSleeve,
     "macd": MacdSleeve,
+    "alpha": AlphaSleeve,
 }
 
 

@@ -21,12 +21,25 @@ def above_sma(prices: pd.DataFrame, window: int) -> pd.DataFrame:
     return prices > prices.rolling(window).mean()
 
 
+def period_starts(index: pd.DatetimeIndex, freq: str) -> pd.Series:
+    """True on the first trading day of each period ("M" month, "W" week).
+
+    Knowable on that day, unlike period-end. The very first row is never a start,
+    since there's no prior row to compare against.
+    """
+    periods = pd.Series(index.to_period(freq), index=index)
+    previous = periods.shift()
+    return periods.ne(previous) & previous.notna()
+
+
 def month_starts(index: pd.DatetimeIndex) -> pd.Series:
-    """True on the first trading day of each month (knowable on that day, unlike month-end)."""
-    months = pd.Series(index.month, index=index)
-    return months.diff().fillna(0).ne(0)
+    return period_starts(index, "M")
+
+
+def rebalance_at(daily: pd.DataFrame, freq: str) -> pd.DataFrame:
+    """Freeze daily target weights at each period start and hold them until the next one."""
+    return daily.loc[period_starts(daily.index, freq)].reindex(daily.index).ffill().fillna(0.0)
 
 
 def rebalance_monthly(daily: pd.DataFrame) -> pd.DataFrame:
-    """Freeze daily target weights at each month start and hold them until the next one."""
-    return daily.loc[month_starts(daily.index)].reindex(daily.index).ffill().fillna(0.0)
+    return rebalance_at(daily, "M")
