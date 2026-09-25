@@ -1,0 +1,49 @@
+source: Well-documented cross-sectional anomalies (hand-written baseline library)
+notes: >
+  Established signals from the academic literature, as a baseline to compare
+  LLM-extracted alphas against. Most were documented on all US stocks; effects are
+  usually weaker in large caps and after publication (McLean & Pontiff 2016).
+alphas:
+  - name: mom_12_1
+    formula: DELAY(CLOSE, 21) / DELAY(CLOSE, 252) - 1
+    direction: 1
+    category: momentum
+    rationale: 12-month return skipping the most recent month.
+    reference: Jegadeesh & Titman (1993), Journal of Finance
+  - name: reversal_1m
+    formula: CLOSE / DELAY(CLOSE, 21) - 1
+    direction: -1
+    category: reversal
+    rationale: Last month's losers tend to bounce next month.
+    reference: Jegadeesh (1990), Journal of Finance
+  - name: reversal_1w
+    formula: CLOSE / DELAY(CLOSE, 5) - 1
+    direction: -1
+    category: reversal
+    rationale: Last week's losers tend to bounce next week.
+    reference: Lehmann (1990), Quarterly Journal of Economics
+  - name: low_vol
+    formula: STD(RETURNS, {n})
+    direction: -1
+    params: {n: [63, 252]}
+    category: volatility
+    rationale: Low-volatility stocks have earned higher risk-adjusted returns.
+    reference: Ang, Hodrick, Xing & Zhang (2006), Journal of Finance
+  - name: high_52w
+    formula: CLOSE / TS_MAX(HIGH, 252)
+    direction: 1
+    category: momentum
+    rationale: Stocks near their 52-week high keep outperforming (anchoring).
+    reference: George & Hwang (2004), Journal of Finance
+  - name: max_effect
+    formula: TS_MAX(RETURNS, 21)
+    direction: -1
+    category: lottery
+    rationale: Stocks with extreme recent up-days are overpriced lottery tickets.
+    reference: Bali, Cakici & Whitelaw (2011), Journal of Financial Economics
+  - name: abnormal_volume
+    formula: MA(VOLUME, 5) / MA(VOLUME, 63)
+    direction: 1
+    category: volume
+    rationale: Unusually high trading volume precedes higher returns (visibility).
+    reference: Gervais, Kaniel & Mingelgrin (2001), Journal of Finance

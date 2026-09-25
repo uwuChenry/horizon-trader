@@ -1,0 +1,24 @@
+source: Kou et al., "Automate Strategy Finding with LLM in Quant Investment", arXiv:2409.06289v4, Table 3
+notes: >
+  The 12 alphas the paper's framework selected for SSE50 in 2023, translated by hand.
+  The paper gives no per-alpha direction (its neural network learns the weights, several
+  negative), so all are evaluated as written (direction 1): a negative IC means the
+  as-written formula predicts the wrong way. Several are price-level dependent (a raw
+  dollar difference ranks expensive stocks at the extremes); the *_pct variants are our
+  scale-free versions of the same idea, added for comparison.
+alphas:
+  - {name: k01, formula: "CLOSE - DELAY(CLOSE, 14)", category: momentum, reference: "Table 3 #1"}
+  - {name: k01_pct, formula: "CLOSE / DELAY(CLOSE, 14) - 1", category: momentum, reference: "scale-free version of #1"}
+  - {name: k02, formula: "RSI(CLOSE, 14) - DELAY(RSI(CLOSE, 14), 14)", category: momentum, reference: "Table 3 #2"}
+  - {name: k03, formula: "CLOSE - DELAY(MA(CLOSE, 14), 7)", category: momentum, reference: "Table 3 #3"}
+  - {name: k04, formula: "MA(CLOSE, 20) - CLOSE", category: mean reversion, reference: "Table 3 #4 (#5 is the same formula)"}
+  - {name: k04_pct, formula: "MA(CLOSE, 20) / CLOSE - 1", category: mean reversion, reference: "scale-free version of #4"}
+  - {name: k06, formula: "TS_MAX(HIGH, 20) - CLOSE", category: mean reversion, reference: "Table 3 #6"}
+  - {name: k06_pct, formula: "TS_MAX(HIGH, 20) / CLOSE - 1", category: mean reversion, reference: "scale-free version of #6"}
+  - {name: k07, formula: "100 - RSI(CLOSE, 14)", category: mean reversion, reference: "Table 3 #7"}
+  - {name: k08, formula: "4 * STD(CLOSE, 20) / MA(CLOSE, 20)", category: volatility, reference: "Table 3 #8, Bollinger band width with 2-sigma bands"}
+  - {name: k09, formula: "STD(CLOSE, 10) / STD(CLOSE, 50)", category: volatility, reference: "Table 3 #9"}
+  - {name: k11, formula: "VOLUME * CLOSE", category: liquidity, reference: "Table 3 #11"}
+unsupported:
+  - {name: k10, description: VOLUME / MARKET_CAP (turnover), missing_data: market cap / shares outstanding}
+  - {name: k12, description: EPS / DELAY(EPS, 1) - 1 (earnings growth), missing_data: point-in-time EPS}
