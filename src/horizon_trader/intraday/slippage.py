@@ -180,18 +180,19 @@ def limit_fill_in_seconds(secs: pd.DataFrame, side: int, trigger: float, limit: 
 
 
 def exit_from(o, h, low, j: int, fill: float, side: int, stop_dist: float, close_px: float):
-    """(exit price, stopped) for a position filled in minute j. Stop-market exit, else the close.
+    """(exit price, stopped, exit index) for a position filled in minute j (index len(o) =
+    the close). Stop-market exit, else the close.
 
     A stop touched in the fill minute counts (with the 1 ATR stop this is ~never ambiguous).
     """
     stop = fill - side * stop_dist
     adverse = low[j:] <= stop if side > 0 else h[j:] >= stop
     if not adverse.any():
-        return close_px, False
+        return close_px, False, len(o)
     i = j + int(np.argmax(adverse))
     if i == j:
-        return stop, True
-    return (min(o[i], stop) if side > 0 else max(o[i], stop)), True
+        return stop, True, i
+    return (min(o[i], stop) if side > 0 else max(o[i], stop)), True, i
 
 
 def stop_limit_trades(m: pd.DataFrame, rules: orb.OrbRules, offset: float) -> pd.DataFrame:
@@ -226,14 +227,19 @@ def stop_limit_trades(m: pd.DataFrame, rules: orb.OrbRules, offset: float) -> pd
             row["triggered"] = fill is not None
             row["fill_delay_min"] = j - k if fill is not None else np.nan
             if fill is not None:
-                px, stopped = exit_from(o, h, lo, j, fill, side, r.stop_dist, r.close)
+                px, stopped, x = exit_from(o, h, lo, j, fill, side, r.stop_dist, r.close)
                 row["entry_px"], row["exit_px_path"], row["stopped_path"] = fill, px, stopped
+                row["entry_idx"], row["exit_idx_path"] = j, x
+                row["entry_time"] = bars["ts"].iloc[j]
             out.append(row)
     return pd.DataFrame(out)
 
 
-def compare(m: pd.DataFrame, rules: orb.OrbRules, top: int) -> str:
-    """Account size x commission plan x entry order type, using measured fills."""
+def measured_variants(
+    m: pd.DataFrame, rules: orb.OrbRules, offsets: tuple[int, ...] = (0, 2, 5, 10)
+) -> dict[str, pd.DataFrame]:
+    """Trade tables with measured fills: stop-market entries, and stop-limit entries at each
+    offset (cents). Stop-outs use each trade's measured slippage, or the mean if unmeasured."""
     exit_slip = m["exit_next_open"].mean()
     variants = {
         "stop-market": m.assign(
@@ -241,12 +247,21 @@ def compare(m: pd.DataFrame, rules: orb.OrbRules, top: int) -> str:
             exit_slip=m["exit_next_open"].fillna(exit_slip),
         )
     }
-    fill_rates = {}
-    for cents in (0, 2, 5, 10):
+    for cents in offsets:
         v = stop_limit_trades(m, rules, cents / 100).assign(entry_slip=0.0, exit_slip=exit_slip)
         variants[f"stop-limit +{cents}c"] = v
+    return variants
+
+
+def compare(m: pd.DataFrame, rules: orb.OrbRules, top: int, calendar: pd.DatetimeIndex) -> str:
+    """Account size x commission plan x entry order type, using measured fills."""
+    variants = measured_variants(m, rules)
+    fill_rates = {}
+    for name, v in variants.items():
+        if name == "stop-market":
+            continue
         filled = v["triggered"].astype(bool)
-        fill_rates[f"stop-limit +{cents}c"] = {
+        fill_rates[name] = {
             "filled": filled.mean(),
             "in trigger minute": (v["fill_delay_min"] == 0).mean(),
             "avg R filled": orb.r_multiple(v[filled], "path").mean(),
@@ -258,7 +273,7 @@ def compare(m: pd.DataFrame, rules: orb.OrbRules, top: int) -> str:
             for plan in ("fixed", "tiered", "lite"):
                 for n in range(1, top + 1):
                     acct = orb.Account(equity=equity, top_n=n, plan=plan, slippage=None)
-                    s = orb._stats(*orb.run_portfolio(v, acct))
+                    s = orb._stats(*orb.run_portfolio(v, acct, calendar))
                     rows.append(
                         {"entry": name, "top": n, "account": f"${equity / 1000:.0f}k {plan}"}
                         | {k: s.get(k) for k in ("CAGR", "Sharpe", "max DD", "costs/trade")}
@@ -278,15 +293,34 @@ def main() -> None:
     p.add_argument("--stop", type=float, default=1.0, help="stop width in ATR (exit legs)")
     p.add_argument("--equity", type=float, default=5_000.0)
     p.add_argument("--compare", action="store_true", help="account size x plan x order type")
+    p.add_argument("--save", action="store_true", help="save top-1 runs for the dashboard")
     args = p.parse_args()
 
     rules = replace(orb.RULES, stop_atr=args.stop)
     trades = orb.build_trades(rules)
+    calendar = pd.DatetimeIndex(sorted(trades["date"].unique()))  # every day of the test
     t = trades[(trades["rank"] <= args.top) & trades["triggered"]]
     print(f"measuring {len(t):,} trades (rank <= {args.top}, stop {args.stop} ATR)")
     m = measure(t, rules)
+    if args.save:
+        variants = measured_variants(m, rules, offsets=(0,))
+        caveat = (
+            "Fills measured from 1-second trade bars (no quotes); stop-limit fills are "
+            "assumed at the limit price, stop-market fills at the next second's open."
+        )
+        accounts = {
+            "$5k fixed": (5_000.0, "fixed"),
+            "$20k fixed": (20_000.0, "fixed"),
+            "$5k lite": (5_000.0, "lite"),
+        }
+        for vname, v in variants.items():
+            for label, (equity, plan) in accounts.items():
+                acct = orb.Account(equity=equity, top_n=1, plan=plan, slippage=None)
+                name = f"ORB top1 {args.stop:g}ATR {vname} {label}"
+                extra = {"caveats": [*orb.ORB_CAVEATS, caveat]}
+                print("saved", orb.save_orb_run(name, v, acct, rules, extra, calendar))
     if args.compare:
-        print(compare(m, rules, args.top))
+        print(compare(m, rules, args.top, calendar))
         return
     print(summary(m))
 
@@ -299,14 +333,14 @@ def main() -> None:
         )
         for n in range(1, args.top + 1):
             acct = orb.Account(equity=args.equity, top_n=n, plan="fixed", slippage=None)
-            s = orb._stats(*orb.run_portfolio(mm, acct))
+            s = orb._stats(*orb.run_portfolio(mm, acct, calendar))
             rows.append({"slippage": f"measured ({est})", "top": n} | s)
     for c in (0.01, 0.02, 0.03):
         for n in range(1, args.top + 1):
             acct = orb.Account(equity=args.equity, top_n=n, plan="fixed", slippage=c)
             rows.append(
                 {"slippage": f"flat {c * 100:.0f}c", "top": n}
-                | orb._stats(*orb.run_portfolio(t, acct))
+                | orb._stats(*orb.run_portfolio(t, acct, calendar))
             )
     cols = ["CAGR", "Sharpe", "max DD", "trades/yr", "$/trade", "costs/trade"]
     table = pd.DataFrame(rows).set_index(["slippage", "top"])[cols]
