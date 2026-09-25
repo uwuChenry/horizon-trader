@@ -30,3 +30,15 @@ def test_untargeted_holdings_are_sold_and_sells_come_first():
 def test_dust_trades_are_skipped():
     orders = compute_orders(pd.Series({"SPY": 0.5}), {"SPY": 4.99}, PRICES, 5_000.0, EXEC)
     assert orders == []  # 0.01 share * $500 = $5 < $25
+
+
+def test_small_drift_inside_band_is_not_traded():
+    held = {"SPY": 5.9}  # 5.9 * 500 / 5000 = 59% vs 60% target
+    assert compute_orders(pd.Series({"SPY": 0.6}), held, PRICES, 5_000.0, EXEC) == []
+    orders = compute_orders(pd.Series({"SPY": 0.7}), held, PRICES, 5_000.0, EXEC)
+    assert orders[0].quantity == pytest.approx(1.1)
+
+
+def test_full_exit_ignores_band():
+    orders = compute_orders(pd.Series(dtype=float), {"SPY": 0.1}, PRICES, 5_000.0, EXEC)
+    assert orders[0].quantity == pytest.approx(-0.1)  # 1% of equity, still closed out

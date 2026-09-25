@@ -21,6 +21,9 @@ uv sync --group research     # + vectorbt, lightgbm, jupyter for research
 cp .env.example .env         # fill in IBKR + Anthropic settings
 uv run pytest
 uv run python -m horizon_trader.run_daily --dry-run
+uv run python -m horizon_trader.backtest.run --start 2008-01-01   # add --refresh / --plan tiered
+uv run python -m horizon_trader.backtest.robustness               # param grids, walk-forward, correlations
+uv run python -m horizon_trader.execution.ibkr                    # read-only IBKR connection check
 ```
 
 On a server, use `uv sync --no-dev` to keep the install lean.
@@ -44,9 +47,9 @@ State (Parquet and SQLite files) lives in `./data`, or in `$HT_DATA_DIR` if set.
 
 ## Roadmap
 
-1. Data store and universe
-2. Position (momentum rotation) and swing (mean reversion) sleeves
-3. Daily backtester with IBKR costs
+1. ~~Data store and universe~~
+2. ~~Position (momentum rotation) and swing (mean reversion) sleeves~~
+3. ~~Daily backtester with IBKR costs~~
 4. IBKR paper execution (`ib_async`)
 5. LLM sleeve and first paper replication
 6. Survivorship-free data, ML models, small live capital
