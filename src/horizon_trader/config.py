@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from dotenv import load_dotenv
@@ -33,7 +33,13 @@ class RiskSettings(BaseModel):
 
 class ExecutionSettings(BaseModel):
     min_trade_value: float = 25.0
+    rebalance_band: float = Field(0.02, ge=0.0)
     share_decimals: int = 4
+
+
+class CostSettings(BaseModel):
+    plan: Literal["fixed", "tiered"] = "fixed"
+    slippage_bps: float = Field(5.0, ge=0.0)
 
 
 class Settings(BaseModel):
@@ -42,6 +48,7 @@ class Settings(BaseModel):
     sleeves: dict[str, SleeveSettings]
     risk: RiskSettings = RiskSettings()
     execution: ExecutionSettings = ExecutionSettings()
+    costs: CostSettings = CostSettings()
 
     @model_validator(mode="after")
     def _allocations_fit(self) -> Settings:

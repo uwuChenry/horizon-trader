@@ -4,20 +4,60 @@
 account:
   starting_cash: 5000
 
-universe: [SPY, QQQ, IWM, EFA, EEM, TLT, IEF, GLD]
+# Liquid ETFs across US/intl/EM equity, REITs, commodities, treasuries, gold.
+universe: [SPY, QQQ, IWM, EFA, EEM, VNQ, DBC, TLT, IEF, GLD]
 
+# Allocations were set a priori (not optimized on backtest results): the three
+# position-horizon sleeves carry most of the risk; the weaker, costlier swing sleeve gets less.
 sleeves:
-  # Placeholder until the real sleeves land (phase 2): position = momentum rotation, swing = mean reversion.
-  core_static:
-    type: static
-    allocation: 0.9
+  position_momentum:        # weeks-months: monthly cross-asset momentum rotation
+    type: momentum_rotation
+    allocation: 0.3
     params:
-      weights: {SPY: 0.6, IEF: 0.4}
+      lookback: 252         # 12 months...
+      skip: 21              # ...minus the most recent month
+      top_n: 3
+      trend_window: 200
+
+  position_trend:           # weeks-months: time-series momentum, inverse-vol sized
+    type: trend_following
+    allocation: 0.25
+    params:
+      lookback: 252
+      vol_window: 63
+
+  position_volmanaged:      # weeks-months: SPY scaled by inverse realized variance
+    type: vol_managed
+    allocation: 0.2
+    params:
+      symbol: SPY
+      window: 21
+      target_vol: 0.15
+      max_weight: 1.0
+
+  swing_meanrev:            # days: RSI(2) dip-buying in uptrends
+    type: mean_reversion
+    allocation: 0.15
+    params:
+      universe: [SPY, QQQ, IWM]
+      rsi_period: 2
+      entry: 10
+      exit: 70
+      trend_window: 200
+      max_positions: 3
+      max_hold: 10
+
+  # remaining 10% reserved for the LLM sleeve (phase 5)
 
 risk:
   max_weight: 0.6   # per-ticker cap after netting
   max_gross: 1.0    # no leverage
 
+costs:
+  plan: fixed         # IBKR Pro: fixed ($1 min/order) or tiered ($0.35 min + fees)
+  slippage_bps: 5
+
 execution:
-  min_trade_value: 25   # skip dust trades (USD)
-  share_decimals: 4     # IBKR fractional shares
+  min_trade_value: 25     # skip dust trades (USD)
+  rebalance_band: 0.02    # only resize a position once it drifts >2% of equity from target
+  share_decimals: 4       # IBKR fractional shares
