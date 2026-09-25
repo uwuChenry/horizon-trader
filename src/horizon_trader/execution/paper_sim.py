@@ -36,7 +36,7 @@ class PaperBroker:
 
     def submit(self, order: Order, price: float) -> Fill:
         fill_price = self.costs.fill_price(order.quantity, price)
-        commission = self.costs.commission(order.quantity, fill_price)
+        commission = self.costs.total(order.quantity, fill_price)  # incl. exchange/regulatory
         self.cash -= order.quantity * fill_price + commission
         new_qty = self._positions.get(order.symbol, 0.0) + order.quantity
         if abs(new_qty) < 1e-9:

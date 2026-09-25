@@ -80,9 +80,9 @@ def test_stop_limit_fills_after_trigger_within_limit():
 
 def test_exit_from_stop_gap_and_close():
     o, h, lo = np.array([10, 10.5, 9.0]), np.array([10.2, 10.6, 9.1]), np.array([9.95, 10.4, 8.8])
-    assert slippage.exit_from(o, h, lo, 0, 10.0, 1, 0.5, 11.0) == (9.0, True)  # gapped below 9.5
-    assert slippage.exit_from(o, h, lo, 0, 10.0, 1, 2.0, 11.0) == (11.0, False)
-    assert slippage.exit_from(o, h, lo, 0, 10.0, -1, 0.5, 9.0) == (10.5, True)  # short stop 10.5
+    assert slippage.exit_from(o, h, lo, 0, 10.0, 1, 0.5, 11.0) == (9.0, True, 2)  # gapped below 9.5
+    assert slippage.exit_from(o, h, lo, 0, 10.0, 1, 2.0, 11.0) == (11.0, False, 3)
+    assert slippage.exit_from(o, h, lo, 0, 10.0, -1, 0.5, 9.0) == (10.5, True, 1)  # short stop 10.5
 
 
 def test_lite_charges_only_close_auction_exits():

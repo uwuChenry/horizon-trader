@@ -54,7 +54,7 @@ risk:
   max_gross: 1.0    # no leverage
 
 costs:
-  plan: fixed         # IBKR Pro: fixed ($1 min/order) or tiered ($0.35 min + fees)
+  plan: tiered        # IBKR Pro: tiered ($0.35 min + fees; cheaper for small orders) or fixed ($1 min/order)
   slippage_bps: 5
 
 execution:

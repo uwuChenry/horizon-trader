@@ -38,7 +38,7 @@ class ExecutionSettings(BaseModel):
 
 
 class CostSettings(BaseModel):
-    plan: Literal["fixed", "tiered"] = "fixed"
+    plan: Literal["fixed", "tiered"] = "tiered"
     slippage_bps: float = Field(5.0, ge=0.0)
 
 

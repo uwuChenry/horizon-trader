@@ -34,7 +34,7 @@ import pandas as pd
 from horizon_trader.backtest.metrics import summarize
 from horizon_trader.config import data_dir
 from horizon_trader.data import massive, massive_ref
-from horizon_trader.execution.costs import IBKR_PLANS, CostModel
+from horizon_trader.execution.costs import FINRA_TAF, IBKR_PLANS, SEC_FEE, CostModel
 from horizon_trader.intraday import features as F
 
 CLOSE_TIME = pd.Timedelta(hours=6, minutes=30)  # 9:30 + 6h30 = 16:00
@@ -247,16 +247,12 @@ def build_trades(rules: OrbRules = RULES, rebuild: bool = False) -> pd.DataFrame
 
 # ---------------------------------------------------------------- portfolio accounting
 
-SEC_FEE = 0.0000206  # per $ sold (IBKR pass-through, verified 2026-09-24)
-FINRA_TAF = 0.000195  # per share sold
-CLEARING = 0.0002  # per share, Tiered only
-TIERED_EXCHANGE = 0.003  # per share, ASSUMED remove-liquidity fee for stop/market orders
-
 PLANS: dict[str, CostModel] = {
     "none": CostModel(per_share=0.0, min_per_order=0.0),
     "paper": CostModel(per_share=0.0035, min_per_order=0.0),  # what the paper charged
-    **IBKR_PLANS,
+    **IBKR_PLANS,  # fixed / tiered, incl. pass-through and regulatory fees (execution/costs.py)
 }
+LITE = CostModel(per_share=0.0, min_per_order=0.0, sec_fee_rate=SEC_FEE, taf_per_share=FINRA_TAF)
 
 
 @dataclass(frozen=True)
@@ -273,35 +269,36 @@ class Account:
 
 
 def trade_costs(qty, entry, exit_, side, plan: str, at_close=None) -> np.ndarray:
-    """Commission + regulatory (+ Tiered clearing/exchange) for entry and exit orders.
+    """All-in cost (commission + pass-through + regulatory fees) of the entry and exit orders.
 
-    "lite" (IBKR Lite): $0 during regular hours, but close-auction (MOC) exits are only free
-    while auction volume stays under 10% of the month's shares. ORB exits most trades at the
-    close, so those are charged the lesser of $0.005/share or 1% of value (no minimum).
+    "lite" (IBKR Lite, US residents only): $0 commission during regular hours, but close-auction
+    (MOC) exits are only free while auction volume stays under 10% of the month's shares. ORB
+    exits most trades at the close, so those pay the lesser of $0.005/share or 1% of value.
     """
+    model = LITE if plan == "lite" else PLANS[plan]
+    buy_first = np.asarray(side) > 0
+    cost = np.array(
+        [
+            model.total(q if long else -q, a) + model.total(-q if long else q, b)
+            for q, a, b, long in zip(qty, entry, exit_, buy_first, strict=True)
+        ]
+    )
     if plan == "lite":
         at_close = np.ones(len(qty), bool) if at_close is None else np.asarray(at_close, bool)
-        comm = np.where(at_close, np.minimum(0.005 * qty, 0.01 * qty * exit_), 0.0)
-    else:
-        model = PLANS[plan]
-        comm = np.array(
-            [
-                model.commission(q, a) + model.commission(q, b)
-                for q, a, b in zip(qty, entry, exit_, strict=True)
-            ]
-        )
-    if plan in ("none", "paper"):
-        return comm
-    sell_px = np.where(side > 0, exit_, entry)
-    fees = qty * sell_px * SEC_FEE + qty * FINRA_TAF
-    if plan == "tiered":
-        fees += 2 * qty * (CLEARING + TIERED_EXCHANGE)
-    return comm + fees
+        cost += np.where(at_close, np.minimum(0.005 * qty, 0.01 * qty * exit_), 0.0)
+    return cost
 
 
-def run_portfolio(trades: pd.DataFrame, acct: Account) -> tuple[pd.Series, pd.DataFrame]:
-    """Daily equity curve and per-trade fills. Positions are sized on start-of-day equity."""
-    days = pd.DatetimeIndex(sorted(trades["date"].unique()))
+def run_portfolio(
+    trades: pd.DataFrame, acct: Account, calendar: pd.DatetimeIndex | None = None
+) -> tuple[pd.Series, pd.DataFrame]:
+    """Daily equity curve and per-trade fills. Positions are sized on start-of-day equity.
+
+    `calendar` = every trading day of the test. Pass it whenever `trades` holds only the days
+    that traded (e.g. filtered to triggered trades): a missing flat day would drop out of the
+    equity curve and distort Sharpe and volatility.
+    """
+    days = calendar if calendar is not None else pd.DatetimeIndex(sorted(trades["date"].unique()))
     live = trades[(trades["rank"] <= acct.top_n) & trades["triggered"]]
     by_day = dict(tuple(live.groupby("date")))
     m = acct.same_bar
@@ -325,7 +322,11 @@ def run_portfolio(trades: pd.DataFrame, acct: Account) -> tuple[pd.Series, pd.Da
             costs = np.where(ok, trade_costs(q1, entry, exit_, side, acct.plan, ~stopped), 0)
             pnl = np.where(ok, gross - costs, 0.0)
             equity += pnl.sum()
-            fills.append(t.assign(qty=qty, pnl=pnl, costs=costs, gross=np.where(ok, gross, 0))[ok])
+            fills.append(
+                t.assign(qty=qty, pnl=pnl, costs=costs, gross=np.where(ok, gross, 0)).assign(
+                    entry_fill=entry, exit_fill=exit_, stopped=stopped
+                )[ok]
+            )
         curve[d] = equity
     curve = {days[0] - pd.Timedelta(days=1): acct.equity} | curve  # starting capital
     fills_df = pd.concat(fills, ignore_index=True) if fills else pd.DataFrame()
@@ -336,6 +337,92 @@ def r_multiple(trades: pd.DataFrame, mode: str = "cons") -> pd.Series:
     """Cost-free P&L per trade in units of the stop distance."""
     move = trades[f"exit_px_{mode}"] - trades["entry_px"]
     return trades["side"] * move / trades["stop_dist"]
+
+
+# ---------------------------------------------------------------- results bundles
+
+
+def bundle_trades(fills: pd.DataFrame, rules: OrbRules, mode: str = "path") -> pd.DataFrame:
+    """run_portfolio fills -> bundle trade format, with exit times and MAE/MFE from minute bars.
+
+    mae_R / mfe_R: the worst and best price reached between entry and exit, in R, at minute
+    resolution (the entry minute's range before the fill is included, so both are slight
+    overstatements).
+    """
+    out = []
+    for day, g in fills.groupby("date"):
+        start = F.session_open(day.date())
+        after_or = start + pd.Timedelta(minutes=rules.minutes)
+        tickers = sorted(set(g["ticker"]))
+        window = [
+            ("ts", ">=", after_or),
+            ("ts", "<", start + CLOSE_TIME),
+            ("ticker", "in", tickers),
+        ]
+        bars = pd.read_parquet(massive.local_path("minute", day.date()), filters=window)
+        by_ticker = {tk: b.sort_values("ts") for tk, b in bars.groupby("ticker")}
+        for _, r in g.iterrows():
+            b = by_ticker[r.ticker]
+            k, j = int(r.entry_idx), int(r[f"exit_idx_{mode}"])
+            path = b.iloc[k : min(j, len(b) - 1) + 1]
+            side, entry = int(r.side), r.entry_fill
+            worst = path["low"].min() if side > 0 else path["high"].max()
+            best = path["high"].max() if side > 0 else path["low"].min()
+            out.append(
+                {
+                    "entry_time": r.entry_time,
+                    "exit_time": b["ts"].iloc[j] if j < len(b) else start + CLOSE_TIME,
+                    "symbol": r.ticker,
+                    "side": side,
+                    "qty": r.qty,
+                    "entry_px": entry,
+                    "exit_px": r.exit_fill,
+                    "gross": r.gross,
+                    "costs": r.costs,
+                    "pnl": r.pnl,
+                    "R": side * (r.exit_fill - entry) / r.stop_dist,
+                    "exit_reason": "stop" if r.stopped else "close",
+                    "stop_px": entry - side * r.stop_dist,
+                    "mae_R": side * (entry - worst) / r.stop_dist,
+                    "mfe_R": side * (best - entry) / r.stop_dist,
+                    "rank": r["rank"],
+                    "relvol": r.relvol,
+                    "atr": r.atr,
+                }
+            )
+    return pd.DataFrame(out)
+
+
+ORB_CAVEATS = [
+    "Minute bars: entry-minute stop touches resolved by the open-low-high-close guess (path).",
+    "Short borrow cost not modeled; short-sale-restricted shorts are not excluded.",
+    "Many variants (stop widths, top-N, order types, cost plans) were compared on this same "
+    "data, so the best-looking setups are optimistic.",
+]
+
+
+def save_orb_run(
+    name: str,
+    trades: pd.DataFrame,
+    acct: Account,
+    rules: OrbRules,
+    extra: dict | None = None,
+    calendar: pd.DatetimeIndex | None = None,
+) -> str:
+    from horizon_trader.backtest.bundle import save_run
+
+    equity, fills = run_portfolio(trades, acct, calendar)
+    spy = benchmark(pd.DatetimeIndex(equity.index[1:]))
+    meta = {
+        "strategy": "ORB on Stocks in Play (Zarattini, Barbon & Aziz 2024)",
+        "params": {"rules": rules.__dict__, "account": acct.__dict__},
+        "oos_start": "2024-01-01",
+        "chart": "massive_minute",
+        "caveats": ORB_CAVEATS,
+        "benchmark": "SPY (price only)",
+    } | (extra or {})
+    path = save_run(name, equity, bundle_trades(fills, rules, acct.same_bar), meta, spy)
+    return path.name
 
 
 # ---------------------------------------------------------------- report
@@ -457,6 +544,7 @@ def main() -> None:
     p.add_argument("--stop-atr", type=float, default=RULES.stop_atr)
     p.add_argument("--stops", help="comma-separated stop widths (in ATR) to compare, e.g. 0.1,0.5")
     p.add_argument("--rebuild", action="store_true", help="recompute the cached trade table")
+    p.add_argument("--save", action="store_true", help="save headline runs for the dashboard")
     args = p.parse_args()
 
     rules = OrbRules(minutes=args.minutes, stop_atr=args.stop_atr)
@@ -494,6 +582,9 @@ def main() -> None:
     fmt |= {"Sharpe": "{:.2f}".format, "trades/yr": "{:,.0f}".format}
     fmt |= {c: "{:,.2f}".format for c in ("$/trade", "costs/trade")}
     fmt |= {"final": "{:,.0f}".format}
+    if args.save:
+        for label, acct in (setups[1], setups[4], ("$5k top1 fixed 1c", replace(mine, top_n=1))):
+            print("saved", save_orb_run(f"ORB {rules.stop_atr:g}ATR {label}", trades, acct, rules))
     print("same-bar convention: path unless named; each period starts fresh")
     with pd.option_context("display.width", 200, "display.max_rows", 200):
         print(table.reindex(columns=cols).to_string(formatters=fmt, na_rep="-"))

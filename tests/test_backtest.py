@@ -6,7 +6,14 @@ from horizon_trader.backtest.sim import simulate
 from horizon_trader.config import ExecutionSettings
 from horizon_trader.data.store import load_bars
 from horizon_trader.execution import ZERO_COSTS, CostModel
-from horizon_trader.execution.costs import IBKR_PLANS, ibkr_costs
+from horizon_trader.execution.costs import (
+    CLEARING,
+    FINRA_TAF,
+    IBKR_PLANS,
+    SEC_FEE,
+    TIERED_EXCHANGE,
+    ibkr_costs,
+)
 
 
 def test_ibkr_tiered_commission_min_per_share_and_cap():
@@ -16,10 +23,20 @@ def test_ibkr_tiered_commission_min_per_share_and_cap():
     assert c.commission(0.5, 10.0) == pytest.approx(0.05)  # capped at 1% of value
 
 
+def test_tiered_fees_on_every_fill_and_regulatory_fees_on_sells():
+    c = IBKR_PLANS["tiered"]
+    buy, sell = c.fees(100, 50.0), c.fees(-100, 50.0)
+    assert buy == pytest.approx(100 * (CLEARING + TIERED_EXCHANGE))
+    assert sell == pytest.approx(buy + 100 * 50.0 * SEC_FEE + 100 * FINRA_TAF)
+    assert c.total(-100, 50.0) == pytest.approx(0.35 + sell)
+
+
 def test_ibkr_fixed_commission():
     c = ibkr_costs("fixed", slippage_bps=0)
     assert c.commission(10, 100.0) == pytest.approx(1.0)  # $1 minimum
     assert c.commission(1000, 10.0) == pytest.approx(5.0)  # $0.005/share
+    assert c.fees(1000, 10.0) == 0.0  # exchange + clearing included in Fixed
+    assert c.fees(-1000, 10.0) == pytest.approx(10_000 * SEC_FEE + 1000 * FINRA_TAF)
     assert c.fill_price(1, 100.0) == 100.0
 
 

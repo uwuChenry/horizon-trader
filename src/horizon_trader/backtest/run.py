@@ -83,19 +83,66 @@ def format_report(table: pd.DataFrame) -> str:
     return out.to_string()
 
 
+def save_results(
+    results: dict[str, BacktestResult], settings: Settings, closes: pd.DataFrame, start: str
+) -> list[str]:
+    """Write each run as a dashboard bundle (fills FIFO-matched into round trips)."""
+    from horizon_trader.backtest.analytics import round_trips
+    from horizon_trader.backtest.bundle import save_run
+
+    marks = closes.ffill().iloc[-1].dropna().to_dict()
+    spy = closes[BENCHMARK].loc[start:].dropna()
+    saved = []
+    for label, r in results.items():
+        cfg = settings.sleeves.get(label)
+        meta = {
+            "strategy": "daily sleeves" if label != BENCHMARK_LABEL else "benchmark",
+            "params": {
+                "sleeve": label,
+                "config": cfg.model_dump() if cfg else None,
+                "costs": settings.costs.model_dump(),
+                "risk": settings.risk.model_dump(),
+            },  # fmt: skip
+            "oos_start": "2024-01-01",
+            "chart": "daily",
+            "caveats": [
+                "yfinance data: no delisted tickers (survivorship bias).",
+                f"Slippage assumed at {settings.costs.slippage_bps:g} bps per fill.",
+                "Weight-based rebalancing: 'trades' are FIFO lot slices, not discrete signals.",
+            ],
+            "benchmark": f"{BENCHMARK} (adjusted close)",
+        }
+        trades = round_trips(r.trades, marks)
+        path = save_run(
+            f"daily {label} ({settings.costs.plan})",
+            r.equity,
+            trades,
+            meta,
+            spy.reindex(r.equity.index),
+        )
+        saved.append(path.name)
+    return saved
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--start", default="2008-01-01")
     parser.add_argument("--refresh", action="store_true", help="re-download cached bars")
     parser.add_argument("--plan", choices=["fixed", "tiered"], help="override IBKR pricing plan")
+    parser.add_argument("--save", action="store_true", help="save every run for the dashboard")
     args = parser.parse_args()
 
     settings = load_settings(args.config)
     if args.plan:
         settings.costs.plan = args.plan
     print(f"IBKR {settings.costs.plan} pricing, {settings.costs.slippage_bps:g} bps slippage")
-    print(format_report(report(backtest(settings, args.start, args.refresh))))
+    results = backtest(settings, args.start, args.refresh)
+    print(format_report(report(results)))
+    if args.save:
+        closes = load_universe_bars(settings)["close"]
+        for name in save_results(results, settings, closes, args.start):
+            print("saved", name)
 
 
 if __name__ == "__main__":

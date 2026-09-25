@@ -207,3 +207,11 @@ def test_unranked_and_untriggered_trades_are_ignored():
     trades = pd.concat([_one_trade(), _one_trade(rank=2), _one_trade(triggered=False)])
     _, fills = orb.run_portfolio(trades, orb.Account(top_n=1, plan="none"))
     assert len(fills) == 1
+
+
+def test_calendar_keeps_flat_days_in_the_equity_curve():
+    trade = _one_trade()  # one trading day only
+    calendar = pd.bdate_range("2024-02-28", "2024-03-05")
+    equity, _ = orb.run_portfolio(trade, orb.Account(top_n=1, plan="none"), calendar)
+    assert len(equity) == len(calendar) + 1  # + the starting-capital point
+    assert equity.loc["2024-03-04"] == equity.iloc[-1]  # flat after the trade day
