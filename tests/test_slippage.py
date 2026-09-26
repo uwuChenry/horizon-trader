@@ -90,3 +90,16 @@ def test_lite_charges_only_close_auction_exits():
     c = orb.trade_costs(qty, px, px, np.array([1, 1]), "lite", at_close=np.array([True, False]))
     sell_fees = 100 * 50 * orb.SEC_FEE + 100 * orb.FINRA_TAF
     assert c == pytest.approx([0.5 + sell_fees, sell_fees])
+
+
+def test_limit_fill_second_position():
+    secs = _secs(
+        [
+            (9.95, 9.98, 9.95, 9.97, 100, 9.96),
+            (9.99, 10.08, 9.99, 10.07, 500, 10.04),  # trigger
+            (10.07, 10.09, 10.06, 10.08, 300, 10.07),  # above the 10.05 limit: no fill
+            (10.06, 10.06, 10.02, 10.03, 300, 10.04),  # trades through: fills here
+        ]
+    )
+    assert slippage.limit_fill_second(secs, 1, 10.0, 10.05) == 3
+    assert slippage.limit_fill_second(secs, 1, 10.0, 10.00) is None

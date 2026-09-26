@@ -5,6 +5,7 @@
     trades.parquet      one row per round trip (format in analytics.py)
     benchmark.parquet   optional benchmark price series (column "benchmark"), same dates
     meta.json           name, strategy, params, costs, caveats, oos_start, chart, git commit
+    tables/<key>.parquet  optional extra tables (e.g. daily holdings, monthly picks)
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,7 @@ def save_run(
     trades: pd.DataFrame,
     meta: dict[str, Any] | None = None,
     benchmark: pd.Series | None = None,
+    tables: dict[str, pd.DataFrame] | None = None,
 ) -> Path:
     missing = [c for c in TRADE_COLUMNS if c not in trades.columns]
     if missing:
@@ -68,6 +70,9 @@ def save_run(
     trades.reset_index(drop=True).to_parquet(path / "trades.parquet", index=False)
     if benchmark is not None:
         benchmark.rename("benchmark").to_frame().to_parquet(path / "benchmark.parquet")
+    for key, table in (tables or {}).items():
+        (path / "tables").mkdir(exist_ok=True)
+        table.to_parquet(path / "tables" / f"{_slug(key)}.parquet", index=False)
     info = {"name": name, "created": now.isoformat(timespec="seconds")} | _git() | (meta or {})
     info |= {"start": str(equity.index[0].date()), "end": str(equity.index[-1].date())}
     (path / "meta.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
@@ -81,6 +86,7 @@ class Run:
     equity: pd.Series
     trades: pd.DataFrame
     benchmark: pd.Series | None
+    tables: dict[str, pd.DataFrame] = field(default_factory=dict)
 
 
 def list_runs() -> pd.DataFrame:
@@ -102,4 +108,9 @@ def load_run(run_id: str) -> Run:
         equity=pd.read_parquet(path / "equity.parquet")["equity"],
         trades=pd.read_parquet(path / "trades.parquet"),
         benchmark=pd.read_parquet(bench)["benchmark"] if bench.exists() else None,
+        tables={f.stem: pd.read_parquet(f) for f in sorted(path.glob("tables/*.parquet"))},
     )
+
+
+def has_table(run_id: str, key: str) -> bool:
+    return (results_dir() / run_id / "tables" / f"{key}.parquet").exists()

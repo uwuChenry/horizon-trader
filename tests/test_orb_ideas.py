@@ -74,3 +74,61 @@ def test_verdicts_and_family_rule():
     assert t.loc["a1", "passes"] is True and t.loc["a2", "passes"] is False
     # a: two pass but the middle (a2) fails -> fail; b: two pass incl. the middle -> PASS
     assert I.family_verdict(t) == {"a": "fail", "b": "PASS", "c": "PASS"}
+
+
+def test_fill_minute_check_can_be_skipped_when_seconds_were_checked():
+    o, h, lo = _bars()
+    # the fill minute's low (9.8) would stop a 0.1R-wide stop, but the seconds said no
+    assert I.manage_exit(o, h, lo, 0, 10.0, 1, 0.1, 10.4, "hold")[1] is True
+    px, stopped, i = I.manage_exit(o, h, lo, 0, 10.0, 1, 0.1, 10.4, "hold", check_fill_minute=False)
+    assert (stopped, i) == (True, 5)  # later minute 5 (low 9.5) still stops it
+
+
+def test_target_exits_at_the_limit_or_a_better_gap():
+    o, h, lo = _bars()
+    # target +2R = 12.0: minute 2 trades through (high 12.2) -> exit at 12.0 in minute 2
+    assert I.manage_exit(o, h, lo, 0, 10.0, 1, 1.0, 10.4, "target", 2.0) == (12.0, False, 2)
+    # target +1R = 11.0: minute 1 high 11.2 -> 11.0; a touch without trading through doesn't fill
+    assert I.manage_exit(o, h, lo, 0, 10.0, 1, 1.0, 10.4, "target", 1.0) == (11.0, False, 1)
+    assert I.manage_exit(o, h, lo, 0, 10.0, 1, 1.0, 10.4, "target", 2.2)[2] == 6  # 12.2 = no fill
+    # a gap above the target fills at the (better) open
+    o2, h2, lo2 = A([10.0, 12.5]), A([10.1, 12.6]), A([9.9, 12.4])
+    assert I.manage_exit(o2, h2, lo2, 0, 10.0, 1, 1.0, 10.4, "target", 2.0) == (12.5, False, 1)
+
+
+def test_volatility_regime_has_no_lookahead():
+    from horizon_trader.intraday import features as F
+
+    rng = np.random.default_rng(4)
+    idx = pd.bdate_range("2019-01-01", periods=700)
+    close = pd.Series(
+        100 * np.cumprod(1 + rng.normal(0, 0.01, 700) * np.linspace(0.5, 2, 700)), idx
+    )
+    full = F.volatility_regime(close, window=20, lookback=252)
+    assert full.iloc[:272].isna().all() and full.dropna().isin([-1, 1]).all()
+    for t in (300, 450, 699):  # cutting off the future doesn't change day t
+        assert F.volatility_regime(close.iloc[: t + 1], 20, 252).iloc[t] == full.iloc[t]
+    assert (full.iloc[-50:] == 1).mean() > 0.8  # volatility rises through the sample
+
+
+def test_gap_and_regime_filters_in_selection():
+    d1, d2 = pd.Timestamp("2024-03-01"), pd.Timestamp("2024-03-04")
+    trades = pd.DataFrame(
+        {
+            "date": [d1, d1, d2],
+            "rank": [1, 2, 1],
+            "side": [1, 1, -1],
+            "relvol": [9.0, 6.0, 5.0],
+            "triggered": True,
+            "open": [10.1, 10.6, 9.0],
+            "prev_close": [10.0, 10.0, 10.0],
+        }
+    )
+    # gaps: +1%, +6%, -10%
+    big = I.select(trades, I.Idea("g", "g", min_gap=0.04), pd.Series(dtype=int))
+    assert list(zip(big.date, big["rank"], strict=True)) == [(d1, 2), (d2, 1)]
+    agree = I.select(trades, I.Idea("a", "a", gap_agrees=True), pd.Series(dtype=int))
+    assert len(agree) == 2  # d1 rank 1 (up gap, long), d2 (down gap, short)
+    regime = pd.Series({d1: 1.0, d2: -1.0})
+    high = I.select(trades, I.Idea("h", "h", vol_regime=1), pd.Series(dtype=int), regime)
+    assert list(high.date) == [d1]
