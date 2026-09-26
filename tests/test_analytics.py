@@ -129,3 +129,15 @@ def test_round_trips_handles_flip_to_short():
     )
     rt = A.round_trips(fills)
     assert list(rt.side) == [1, -1] and list(rt.gross) == [-100.0, 100.0]
+
+
+def test_deflated_sharpe_penalizes_many_trials():
+    rng = np.random.default_rng(0)
+    r = pd.Series(rng.normal(0.0015, 0.01, 1250))  # Sharpe ~2.4, 5 years
+    one = A.deflated_sharpe(r, n_trials=1, trial_sharpe_var=0.0)
+    many = A.deflated_sharpe(r, n_trials=500, trial_sharpe_var=0.03**2)
+    assert one["deflated sharpe (prob.)"] > 0.99
+    assert many["expected max sharpe from luck (ann.)"] > 1.0
+    assert many["deflated sharpe (prob.)"] < one["deflated sharpe (prob.)"]
+    noise = A.deflated_sharpe(pd.Series(rng.normal(0, 0.01, 1250)), 500, 0.03**2)
+    assert noise["deflated sharpe (prob.)"] < 0.5  # pure noise, best of many: not significant

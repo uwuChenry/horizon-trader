@@ -110,3 +110,15 @@ def relative_volume(
     vol = (or_volume.reindex_like(factor).fillna(0.0) / factor).where(traded)
     hist = vol.rolling(lookback, min_periods=lookback).mean().shift(1)
     return vol / hist.where(hist > 0)
+
+
+def volatility_regime(close: pd.Series, window: int = 20, lookback: int = 252) -> pd.Series:
+    """+1 on days the market's realized volatility is above its own median, -1 below.
+
+    Volatility = std of daily returns over `window` days through YESTERDAY; the median is over
+    the previous `lookback` days of that series. So day t's regime is known at its open. NaN
+    until there is enough history.
+    """
+    vol = close.pct_change().rolling(window, min_periods=window).std().shift(1)
+    med = vol.rolling(lookback, min_periods=lookback).median()
+    return np.sign(vol - med).where(med.notna())

@@ -267,3 +267,39 @@ def round_trips(fills: pd.DataFrame, marks: dict[str, float] | None = None) -> p
     df = pd.DataFrame(trades, columns=cols)
     df["pnl"] = df["gross"] - df["costs"]
     return df.sort_values(["exit_time", "entry_time"], ignore_index=True)
+
+
+# ---------------------------------------------------------------- multiple testing
+
+
+def deflated_sharpe(
+    daily_returns: pd.Series, n_trials: int, trial_sharpe_var: float
+) -> dict[str, float]:
+    """Deflated Sharpe ratio (Bailey & Lopez de Prado, 2014).
+
+    The probability that the true Sharpe is above zero after correcting for having picked the
+    best of `n_trials` configurations, and for skew and fat tails. `trial_sharpe_var` is the
+    variance of the per-day (not annualized) Sharpe across all trials. Above ~0.95 is solid;
+    around 0.5 means the best result is what luck alone would produce.
+    """
+    from statistics import NormalDist
+
+    r = daily_returns.dropna()
+    z = NormalDist()
+    sr = r.mean() / r.std()
+    skew, kurt = r.skew(), r.kurt() + 3  # pandas kurt() is excess kurtosis
+    euler = 0.5772156649
+    n = max(int(n_trials), 1)
+    if n > 1:
+        sr0 = np.sqrt(trial_sharpe_var) * (
+            (1 - euler) * z.inv_cdf(1 - 1 / n) + euler * z.inv_cdf(1 - 1 / (n * np.e))
+        )
+    else:
+        sr0 = 0.0
+    denom = np.sqrt(max(1 - skew * sr + (kurt - 1) / 4 * sr**2, 1e-12))
+    dsr = z.cdf((sr - sr0) * np.sqrt(len(r) - 1) / denom)
+    return {
+        "sharpe (ann.)": float(sr * np.sqrt(TRADING_DAYS)),
+        "expected max sharpe from luck (ann.)": float(sr0 * np.sqrt(TRADING_DAYS)),
+        "deflated sharpe (prob.)": float(dsr),
+    }

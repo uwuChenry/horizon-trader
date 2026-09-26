@@ -104,8 +104,9 @@ def add_dimensions(t: pd.DataFrame) -> pd.DataFrame:
         t["entry time"] = entry.dt.floor("30min").dt.strftime("%H:%M")
     top = t["symbol"].value_counts().head(12).index
     t["symbol (top 12)"] = t["symbol"].where(t["symbol"].isin(top), "other")
-    if "relvol" in t:
-        t["relative volume"] = pd.cut(t["relvol"], [1, 2, 3, 5, 10, 30, np.inf], right=False)
+    relvol = pd.to_numeric(t["relvol"], errors="coerce") if "relvol" in t else None
+    if relvol is not None and relvol.notna().any():  # ETF runs have no relative volume
+        t["relative volume"] = pd.cut(relvol, [1, 2, 3, 5, 10, 30, np.inf], right=False)
     held = (t["exit_time"] - t["entry_time"]) / pd.Timedelta(hours=1)
     edges = [0, 1, 3, 6.5, 24, 24 * 7, 24 * 30, np.inf] if not intraday else [0, 0.5, 1, 2, 4, 7]
     t["holding (h)"] = pd.cut(held, edges, right=False)

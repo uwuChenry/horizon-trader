@@ -215,3 +215,74 @@ def test_calendar_keeps_flat_days_in_the_equity_curve():
     equity, _ = orb.run_portfolio(trade, orb.Account(top_n=1, plan="none"), calendar)
     assert len(equity) == len(calendar) + 1  # + the starting-capital point
     assert equity.loc["2024-03-04"] == equity.iloc[-1]  # flat after the trade day
+
+
+@pytest.mark.parametrize("plan", ["none", "paper", "fixed", "tiered"])
+def test_vectorized_costs_match_cost_model(plan):
+    rng = np.random.default_rng(5)
+    qty = rng.integers(1, 5000, 200).astype(float)
+    entry, exit_ = rng.uniform(1, 500, 200), rng.uniform(1, 500, 200)
+    side = rng.choice([1, -1], 200)
+    model = orb.PLANS[plan]
+    expected = [
+        model.total(q * s, a) + model.total(-q * s, b)
+        for q, a, b, s in zip(qty, entry, exit_, side, strict=True)
+    ]
+    np.testing.assert_allclose(orb.trade_costs(qty, entry, exit_, side, plan), expected, rtol=1e-12)
+
+
+def test_candidate_bars_cache_matches_the_minute_file(tmp_path, monkeypatch):
+    from horizon_trader.data import massive
+
+    monkeypatch.setenv("HT_DATA_DIR", str(tmp_path))
+    day = date(2024, 3, 1)
+    t0 = F.session_open(day)
+    ts = [t0 + pd.Timedelta(minutes=m) for m in (-5, 0, 1, 7, 400)]  # pre-market, RTH, after close
+    bars = pd.DataFrame({"ts": ts * 2, "ticker": ["A"] * 5 + ["B"] * 5, "open": np.arange(10.0),
+                         "high": np.arange(10.0) + 1, "low": np.arange(10.0) - 1,
+                         "close": np.arange(10.0), "volume": 100, "transactions": 1})  # fmt: skip
+    path = massive.local_path("minute", day)
+    path.parent.mkdir(parents=True)
+    bars.to_parquet(path, index=False)
+    trades = pd.DataFrame({"date": [pd.Timestamp(day)], "ticker": ["A"]})
+
+    cand = orb.CandidateBars(trades, minutes=5)
+    session = cand.session(pd.Timestamp(day), "A")
+    assert list(session["open"]) == [1.0, 2.0, 3.0]  # 9:30, 9:31, 9:37 only
+    assert list(cand.after_or(pd.Timestamp(day), "A")["open"]) == [3.0]  # from 9:35
+    assert cand.session(pd.Timestamp(day), "B").empty  # not a candidate
+    again = orb.CandidateBars(trades, minutes=5)  # second load comes from the cache
+    pd.testing.assert_frame_equal(again.session(pd.Timestamp(day), "A"), session)
+
+
+def test_dollar_volume_floor_filters_before_the_top_n_cut():
+    day = pd.DataFrame(
+        {"open": [20.0] * 4, "atr": [1.0] * 4, "avg_volume": [2e6, 2e6, 9e6, 2e6],
+         "prev_close": [20.0, 20.0, 50.0, 20.0], "relvol": [9.0, 8.0, 3.0, 2.0],
+         "or_open": [10.0] * 4, "or_close": [11.0] * 4, "opens_on_time": [True] * 4},
+        index=list("ABCD"),
+    )  # fmt: skip
+    # dollar volume: A, B, D = $40M; C = $450M. With keep=1 and no floor, A wins.
+    assert list(orb.select_candidates(day, orb.OrbRules(keep=1)).index) == ["A"]
+    big = orb.OrbRules(keep=1, min_dollar_volume=100e6)
+    assert list(orb.select_candidates(day, big).index) == ["C"]  # ranked 3rd on relvol, kept
+
+
+def test_candidate_bars_fetch_new_tickers_on_days_already_cached(tmp_path, monkeypatch):
+    from horizon_trader.data import massive
+
+    monkeypatch.setenv("HT_DATA_DIR", str(tmp_path))
+    day = date(2024, 3, 1)
+    t0 = F.session_open(day)
+    bars = pd.DataFrame({"ts": [t0, t0], "ticker": ["A", "B"], "open": [1.0, 2.0],
+                         "high": [1.0, 2.0], "low": [1.0, 2.0], "close": [1.0, 2.0],
+                         "volume": 1, "transactions": 1})  # fmt: skip
+    path = massive.local_path("minute", day)
+    path.parent.mkdir(parents=True)
+    bars.to_parquet(path, index=False)
+    one = pd.DataFrame({"date": [pd.Timestamp(day)], "ticker": ["A"]})
+    orb.CandidateBars(one, minutes=5)
+    both = pd.DataFrame({"date": [pd.Timestamp(day)] * 2, "ticker": ["A", "B"]})
+    cand = orb.CandidateBars(both, minutes=5)  # same day, new ticker: must be fetched
+    assert list(cand.session(pd.Timestamp(day), "B")["open"]) == [2.0]
+    assert list(cand.session(pd.Timestamp(day), "A")["open"]) == [1.0]

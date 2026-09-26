@@ -16,7 +16,7 @@ Personal systematic trading system. Python 3.12, managed with `uv`, runs on Wind
 ## Commands
 ```bash
 uv sync                                                        # dev + dashboard groups by default; add --group research for vectorbt/lightgbm/jupyter
-uv run pytest                                                  # ~131 tests, <5s, no network
+uv run pytest                                                  # ~171 tests, <10s, no network
 uv run ruff check . && uv run ruff format .                    # line length 100
 uv run python -m horizon_trader.run_daily --dry-run            # today's targets and orders (live mode refuses until the IBKR adapter exists)
 uv run python -m horizon_trader.backtest.run [--plan fixed] [--save]   # every sleeve + combined + SPY, 2008 to today
@@ -28,14 +28,24 @@ uv run python -m horizon_trader.data.massive_ref            # splits + common-st
 uv run python -m horizon_trader.intraday.orb [--rebuild]     # ORB on Stocks in Play, full report (~3 min first run)
 uv run python -m horizon_trader.intraday.orb --stops 0.1,0.5,1.0  # stop-width robustness check
 uv run python -m horizon_trader.intraday.slippage [--top 2 --stop 1.0] [--compare]  # measured fills from 1-second bars; --compare = account x plan x order type
+uv run python -m horizon_trader.intraday.orb_ideas [--save]      # pre-registered ORB ideas (~25s)
+uv run python -m horizon_trader.intraday.orb_grid [--save]       # 480-config grid x 4 slippage x 2 accounts, train/test (~45s)
+uv run python -m horizon_trader.intraday.orb_ideas --round 2    # gap catalyst + volatility regime ideas
+uv run python -m horizon_trader.intraday.orb_largecap           # dollar-volume (large-cap) filters, own measured slippage
+uv run python -m horizon_trader.intraday.etf_orb [--tickers ...] # ORB on QQQ/SPY/TQQQ/SPXL/UPRO/SOXL/SMH (~90s)
+uv run python -m horizon_trader.backtest.mix [--save]           # daily book + intraday sleeves: splits and overlays
+uv run python -m horizon_trader.backtest.megacap [--save]       # top 10/50/100 by point-in-time market cap vs SPY/QQQ/OEF/XLG
+uv run python -m horizon_trader.backtest.winners [--save]       # momentum top 10/20 among the point-in-time 200 largest, $5k net
+uv run python -m horizon_trader.intraday.market_momentum [--ticker QQQ] [--save]  # SPY noise-area + last-half-hour momentum (~90s)
+uv run python -m horizon_trader.macro.gold_dollar [--save]      # gold vs dollar (GLD/UUP), 5 pre-registered tests (~2.5 min)
 uv run python -m horizon_trader.alphas.cli extract <pdf|url>   # paper -> research/alphas/*.yaml (needs ANTHROPIC_API_KEY)
 uv run python -m horizon_trader.alphas.cli evaluate <yaml...>  # rank-IC report on the large-cap universe
 uv run python -m horizon_trader.alphas.cli backtest <yaml> <alpha>
 ```
 Any backtest command accepts `--config <file>` to try an experimental setup without editing `config/settings.yaml`.
-`--save` on `backtest.run`, `intraday.orb` and `intraday.slippage` writes result bundles; browse them with:
+`--save` on `backtest.run`, `intraday.orb`, `intraday.slippage` and `intraday.market_momentum` writes result bundles; browse them with:
 ```bash
-uv run python -m horizon_trader.dashboard                      # Streamlit app on localhost:8501
+uv run python -m horizon_trader.dashboard                      # Streamlit app on localhost:8501 (+ Research page)
 ```
 
 ## Architecture (the core contract)
@@ -54,15 +64,26 @@ uv run python -m horizon_trader.dashboard                      # Streamlit app o
     - Both pay SEC ($20.60 per $1M sold) and FINRA TAF ($0.000195/share sold) on sells.
     - Check the Tiered exchange-fee assumption against real paper fills.
   - The `Broker` protocol is the seam where the real IBKR adapter plugs in. NautilusTrader is the candidate engine for intraday strategies (event-driven fills, stop orders, IB adapter).
-- **Backtest** (`backtest/sim.py`): signals from the close of day t trade at the open of day t+1.
+- **Backtest** (`backtest/sim.py`): signals from the close of day t trade at the open of day t+1. Targets are re-applied daily through `compute_orders`, so a position is traded back once it drifts past the 2% band. `PaperBroker` allows slightly negative cash (overweight positions inside the band plus new buys) and charges no margin interest: 0.6% of equity on average in the momentum top 10.
 - **Data** (`data/store.py`): OHLCV cached per symbol as Parquet under `./data` (or `$HT_DATA_DIR`), refreshed once a day from yfinance. yfinance is a prototype source only: it has no delisted tickers (survivorship bias).
 - **Intraday data** (`data/massive.py`): Massive flat files, one Parquet per trading day under `data/massive/<minute|day>/<YYYY>/`, covering the whole US market including delisted names. Prices are **unadjusted** and timestamps are bar starts in New York time. The Starter plan ($29/mo) covers 5 years. Personal use only; delete the data if the account is terminated.
 - **Intraday research** (`intraday/`): `features.py` builds split-safe daily stats (ATR, average volume) and the opening range / relative volume from Massive bars. `orb.py` simulates each candidate's trade once, caches the trade table under `data/massive/derived/`, then runs portfolio variants (size, costs, slippage) on it in seconds. Pass `--rebuild` after changing simulation code.
+  - **Speed and caches:**
+    - `build_trades` returns straight from cache (~0.1s) when every day is done; processed days are tracked in `*.days.json`.
+    - Missing days, rebuilds and opening ranges run in parallel worker processes (`orb.workers()` = cores - 2).
+    - `orb.CandidateBars` is one cached file with every candidate's session bars (`cand_bars_or5.parquet`, ~1 GB in memory, 3s to load). Use it instead of reading day files per ticker: a filtered read decodes the whole 1.5M-row file.
+    - `orb_ideas` runs variants in a process pool: 15 variants in ~25s (was ~10 min). Results are verified identical to the serial version.
+    - **Windows:** worker processes re-import the main script, so run parallel code via `python -m ...` or behind `if __name__ == "__main__":`, never from stdin.
+  - `market_momentum.py` caches one ticker's session bars (`derived/minute_<T>.parquet`), reshapes them into day x minute matrices (`make_bars`), and builds cost-free trade tables that `run_portfolio` sizes and charges. Signals use the close of the minute ending at a check time and fill at the next bar's open. Exits at the close use the Massive daily close, which is the official closing auction (checked against the minute bars).
 - **Results and dashboard:**
   - `backtest/bundle.py`: every backtest saves the same bundle under `data/results/<timestamp>_<name>/`: equity, trades (one row per round trip), benchmark, and meta.json (params, caveats, `oos_start`, git commit).
   - `backtest/analytics.py` computes every metric the dashboard shows (profit factor, streaks, drawdown periods, in-sample vs out-of-sample split, FIFO round trips from fills). It's tested, so the dashboard and CLI can't disagree.
   - `dashboard/app.py` (Streamlit) only displays. Figure builders live in `dashboard/charts.py`, and the colours follow the validated dataviz palette.
   - A new strategy shows up in the dashboard by writing a bundle via `save_run`.
+  - `dashboard/nav.py` is the entry point, with three pages: Backtests (`app.py`), Holdings (`holdings.py`) and Research (`research.py`).
+  - Holdings shows what a portfolio held on any day (date slider), for bundles with a `holdings` table. `save_run(..., tables={...})` stores extra tables under `tables/`. `winners --save` writes `holdings` (daily positions rebuilt from the fills) and `picks` (each month's top-20 ranking). Page logic lives in `dashboard/holdings_view.py`.
+  - Research renders every `research/*.md` note and has a Papers tab that collects every link the notes cite (`dashboard/notes.py` parses markdown links and bare URLs).
+  - Write findings there, not only in chat, and link every paper you cite.
   - Intraday portfolios need the full trading calendar passed to `orb.run_portfolio` when the trade table holds only traded days; otherwise flat days drop out and Sharpe is distorted.
 - **Alpha research** (`alphas/`):
   - `dsl.py` is the safe formula language: parsed with `ast`, **never eval'd**, with every operator causal. LLM-written formulas go through it.
@@ -99,6 +120,27 @@ uv run python -m horizon_trader.dashboard                      # Streamlit app o
 - Order type and account (`slippage --compare`, top-1, 1 ATR stop, measured fills): a stop-limit entry at the trigger price fills 97% of trades. It misses the 3% that run away, which average +1.4R. Sharpe is bounded by fill assumptions (worst case: fill at the limit, the code default; best case: fill at the next trade, approximate): $5k Fixed 0.52-0.78 (stop-market 0.42); $20k Fixed 0.79-1.0 (0.70); IBKR Lite 0.87-1.08 (0.78). Wider limits (+5c, +10c) are worse under the worst-case assumption. The $20k account helps because the $1 minimum stops dominating. Lite's MOC exits exceed its 10% free-auction allowance, so they're charged $0.005/share. Lite's order routing and API access for stop orders are unverified. Many variants were compared on the same 5 years, so the best rows are optimistic: paper-trade before believing any of them.
 - $5k top-1/top-2 at 1c: 37-55% CAGR but Sharpe 0.7-0.84 and 53-69% drawdowns, using 4x intraday leverage on one or two stocks.
 
+**SPY market intraday momentum** (`intraday.market_momentum`, Oct 2021 to Sep 2026, paper defaults; full write-up in `research/strategy_survey.md`):
+- **Noise area** (Zarattini, Aziz & Barbon 2024):
+  - Replicates inside the paper's own sample (to May 2024): +5.4 bps/trade, t = 2.9.
+  - After publication: +1.3 bps/trade, t = 0.7. 2026 so far is negative.
+  - $100k at paper costs: Sharpe 1.21 overall, 0.52 after publication.
+  - $5k IBKR Fixed at 0.5c slippage: 8.0% CAGR, Sharpe 0.62, and -2.9% after publication. Tiered: 12.5%, and 2.2% after publication. SPY: 11.2%.
+  - The $1 minimum is about $2.30 of the ~$2-4 gross per trade.
+  - **Verdict: not worth trading on SPY at $5k now.**
+  - **QQQ robustness check:** the effect holds after publication: +5.8 bps/trade, t = 2.0, positive every year. $5k Tiered at 0.5c: 18.7% CAGR, Sharpe 1.33 overall; 15.3% and 1.02 after publication, vs QQQ buy-and-hold at 23.2% and 1.08. Picking QQQ because SPY failed is selection bias. The owner skipped an IWM/DIA cross-check, so the only remaining out-of-sample test is paper trading QQQ on IBKR.
+- **Last-half-hour momentum** (Gao et al. 2018; Baltussen et al. 2021): dead. The rest-of-day signal is +1.4 bps before May 2024 and -1.4 bps after; the first-half-hour signal is noise. The always-long control is flat.
+
+**Gold vs dollar** (`macro.gold_dollar`, GLD vs UUP, 2007-2026; write-up in `research/gold_dollar.md`):
+- The same-day inverse link is real and stable: daily correlation between -0.2 and -0.65 in every year, including 2022-26.
+- It is **not tradeable**. None of the 5 pre-registered tests passed: the dollar leading gold (1 or 5 days) has the wrong sign, and gap-closing over 5 days, 20 days or at the level has t <= 1.4.
+- Long/flat versions don't beat GLD buy-and-hold (Sharpe 0.57).
+- Use UUP, not DXY: DXY settles an hour after GLD's close, which creates a fake lead.
+
+**Mega-cap portfolios** (research/megacap.md): 2008-2026 index funds: top 50/100 (XLG/OEF/MGC) ~11.8% vs SPY 11.4%, same ~50% drawdowns; QQQ 16.4%. Point-in-time top 10 (Massive market caps) Oct 2021-Sep 2026: 15.9% vs SPY 11.0% (price only) with a -37% vs -25% drawdown; TODAY's top 10 bought in 2021 shows 35.1%, which is pure hindsight. Point-in-time market caps are cached at data/massive/reference/market_caps.parquet.
+
+**Large-cap momentum, point-in-time** (research/winners_momentum.md): 12-1 momentum, top 10 of the 200 largest (point-in-time, incl. delisted), Oct 2022-Sep 2026, $5k net: 45.4% CAGR, Sharpe 1.14, -40% max DD, beta 1.61. That beats the equal-weight universe (1.06) but slightly trails SPY levered 1.61x (1.22). It caught 14 of the 15 biggest winners, mostly late. July 2026 lost 27%. The same rule on today's 200 largest shows 87%: survivorship nearly doubles it. A short, bull-market-only sample; validate on 2016-2021 before use. **Data trap:** Massive's daily files key on ticker, so a reused symbol joins two securities (BNY was a muni fund before BNY Mellon took it in 2026; SPCX was a SPAC ETF before SpaceX). `winners.momentum` returns NaN when a window has more than 10 missing days. Any new price-history signal needs the same guard.
+
 Alpha research on ~100 large caps, 2010-2023: none of the 20 variants reached t > 2 in the claimed direction.
 - 12-month momentum and 1-week reversal each came in at t ~ 1.95.
 - The Kou et al. (arXiv 2409.06289) formulas are mostly noise; their 14-day momentum predicts the wrong way.
@@ -110,16 +152,22 @@ Alpha research on ~100 large caps, 2010-2023: none of the 20 variants reached t 
 - **Pending decision:** make momentum + vol-managed the core, merge or cut the trend sleeve, and replace the swing sleeve with something uncorrelated. The allocations in `config/settings.yaml` still hold all four sleeves (0.3/0.25/0.2/0.15, with 10% reserved for the LLM sleeve).
 - **IBKR paper account:** the owner is setting up IB Gateway (paper, port 4002, `.env` from `.env.example`). Once `execution.ibkr` connects, the next step is the order-placing `Broker` adapter using `ib_async`, with reconciliation and a kill-switch. Place **no live orders** without an explicit go-ahead.
 - **Alpha extraction:** code is done and unit-tested with a mocked client, but it has **never run against the real API** (no key on this machine yet).
+- **Paper-trading plan (from research/portfolio_mix.md):** daily book as the core, with the ORB baseline and QQQ noise-area momentum (at a reduced vol target) overlaid on the same margin account, total intraday gross under 4x. Needs a margin account with intraday leverage.
 - **ORB:** best realistic setup is top-1, 1 ATR stop, stop-limit entry at the trigger, IBKR Pro Tiered ($5k: 12.2% CAGR, Sharpe 0.72, -22% max DD). That's roughly SPY-like Sharpe with no market correlation.
   - Pre-registered ideas (`intraday/orb_ideas.py`, 14 variants, pass = beats the baseline in both 2021-23 and 2024-26):
     - **Entry cutoff** (10:00/10:30/11:00) passed at every setting: Sharpe 0.83-0.85. It drops ~15-30 late trades a year.
     - **Relative volume** >= 5/8/12 passed: Sharpe 0.73/0.78/0.88. >= 3 changes nothing because the top-1 stock is always above 3.
     - **Failed badly:** trading with SPY's direction (0.41), breakeven stops (-0.15 to 0.68) and trailing stops (-1.77 to 0.45). Capping the runners destroys the edge.
     - No idea raised the win rate (~44%).
+  - **Round 2 and large caps** (research/orb_experiments.md, Experiments 8-10): large-cap dollar-volume floors ($50M-$250M/day) cut slippage in bps (14 -> 5) but raise it in cents and kill the edge (Sharpe 0.70 -> -0.03 to 0.18). The overnight-gap catalyst proxy and the volatility-regime filter both fail the pre-registered rule; high-vol-only halves the drawdown at the same Sharpe.
+  - **ETF ORB** (research/etf_orb.md): QQQ/SPY/TQQQ/SPXL/UPRO/SOXL/SMH x the 2023 paper's rules, our baseline, and the paper's 5%-ATR optimum. Slippage is small on ETFs (0.5-4c), but the edge is gone in 2021-26: the paper replication at its own zero-cost assumptions gives QQQ Sharpe 0.46 (paper 1.12). At $5k measured, 19 of 21 lose money; buy-and-hold wins everywhere. The 5%-ATR 'optimum' is worst (-0.35 to -2.44).
+  - **Combining** (research/portfolio_mix.md): the intraday sleeves are ~uncorrelated with the daily book (<= 0.06), but splitting $5k into pots hurts because intraday sleeves degrade at small sizes (ORB Sharpe 0.74 at $5k, 0.38 at $1.5k). Overlaying them on the same margin account (flat overnight, no interest) is the structural fix: daily book 0.91 -> +ORB 1.00, +QQQ noise 1.69 (not pre-registered). QQQ noise uses up to 4x alone, so it must be sized down to fit IBKR's 4x intraday cap next to the daily book.
+  - **Parameter grid** (`orb_grid.py`, research/orb_parameter_grid.md): picking the best of 480 configs on 2021-23 lost to the untouched baseline on 2024-26 in all 8 slippage x account cases; deflated Sharpe 0.00-0.48, so nothing is significant after 480 tries. Robust everywhere: hold to the close (every profit target hurt) and a ~1 ATR stop (0.25-0.75 fail out of sample). Candidate to validate: relvol >= 12 + no entries after 10:30 (full-period Sharpe 0.94, $5k measured). Slippage moves the baseline's test Sharpe more than any parameter: 1.05 at 0c, 0.94 at 1c, 0.82 measured stop-limit, 0.53 measured stop-market.
     - Caveat: over ~2.5-year halves the standard error of Sharpe is ~0.6, so +0.1-0.15 improvements are within noise. Confirm on untouched data (2016-2021 via one month of Massive Developer) or in paper trading before adopting.
 - **Candidate next strategies:**
   - **5-minute ORB on Stocks in Play** (Zarattini, Barbon & Aziz 2024, SSRN 4729284). The paper claims a 2.81 Sharpe, but it models commissions only: no slippage, borrow cost or short-sale restriction. The 5-minute window was the best of the four it tested (the 30-minute had a Sharpe of 0.21). Replicate with and without 1-2 cents of slippage per side before building anything live. It needs 1-minute bars for the whole market, including delisted names.
-  - Intraday momentum (Gao, Han, Li & Zhou 2018: one trade a day, needs minute bars).
-  - Post-earnings-announcement drift (daily data, a good first use of the LLM).
+  - ~~Intraday momentum~~: tested, see the evidence above.
+  - Post-earnings-announcement drift: the classic version is dead in large caps since ~2006 (Martineau 2022). The text-based surprise (PEAD.txt, *JFQA* 2023) still drifts, which makes it the natural LLM use, forward-test only.
+  - Earnings announcement premium (Frazzini & Lamont 2007; persists among the largest announcers) and return seasonalities (Keloharju et al. 2016): cheap daily-data tests. Ranking and dead ends are in `research/strategy_survey.md`; LLM-strategy papers are in `research/llm_strategies_survey.md`.
 - **Data:** yfinance returned no data for BK ("quote not found"), possibly transient. For proper stock-universe research, a point-in-time source with delisted names (e.g. Norgate) is the upgrade. For intraday history, the options are Massive (formerly Polygon.io) or Databento (usage-based, with $125 of free credits); IBKR historical bars are rate-limited.
 - **Deploy later:** `deploy/` has a Dockerfile, a docker-compose placeholder (the IB Gateway image and ports are unverified) and a systemd timer. Recommended host is an x86 mini PC or VPS, not a Jetson Nano.

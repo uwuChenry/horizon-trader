@@ -27,7 +27,6 @@ import pandas as pd
 from horizon_trader.config import data_dir
 from horizon_trader.data import massive
 from horizon_trader.data.massive_ref import API, _http_get
-from horizon_trader.intraday import features as F
 from horizon_trader.intraday import orb
 
 MINUTE = pd.Timedelta(minutes=1)
@@ -103,12 +102,9 @@ def exit_minutes(trades: pd.DataFrame, rules: orb.OrbRules, mode: str = "path") 
     """Timestamp of the minute each stopped trade was stopped in (from the local minute bars)."""
     out = {}
     stopped = trades[trades[f"stopped_{mode}"].astype(bool)]
+    cand = orb.CandidateBars(trades, rules.minutes)
     for (day, ticker), g in stopped.groupby(["date", "ticker"]):
-        start = F.session_open(day.date()) + pd.Timedelta(minutes=rules.minutes)
-        end = F.session_open(day.date()) + orb.CLOSE_TIME
-        window = [("ticker", "==", ticker), ("ts", ">=", start), ("ts", "<", end)]
-        bars = pd.read_parquet(massive.local_path("minute", day.date()), filters=window)
-        ts = bars.sort_values("ts")["ts"].reset_index(drop=True)
+        ts = cand.after_or(day, ticker)["ts"]
         for idx, j in g[f"exit_idx_{mode}"].items():
             out[idx] = ts.iloc[int(j)]
     return pd.Series(out, dtype=f"datetime64[ns, {massive.TZ}]")
@@ -159,8 +155,8 @@ def summary(m: pd.DataFrame) -> str:
 # ---------------------------------------------------------------- stop-limit entries
 
 
-def limit_fill_in_seconds(secs: pd.DataFrame, side: int, trigger: float, limit: float):
-    """Fill price of a stop-limit order within the trigger minute, or None.
+def limit_fill_second(secs: pd.DataFrame, side: int, trigger: float, limit: float) -> int | None:
+    """Position (in `secs`) of the second a stop-limit order fills in, or None.
 
     The order goes live once a trade reaches `trigger` and can fill from the next second on
     (about one second of latency) once a trade prints at least a tick through `limit`
@@ -171,12 +167,18 @@ def limit_fill_in_seconds(secs: pd.DataFrame, side: int, trigger: float, limit: 
     hit = secs["high"] >= trigger if side > 0 else secs["low"] <= trigger
     if not hit.any():
         return None
-    after = secs.iloc[int(np.argmax(hit.to_numpy())) + 1 :]
+    start = int(np.argmax(hit.to_numpy())) + 1
+    after = secs.iloc[start:]
     ok = after["low"] <= limit - TICK if side > 0 else after["high"] >= limit + TICK
     if not ok.any():
         return None
-    # without quotes we can't see the ask/bid, so assume the worst price the order allows
-    return limit
+    return start + int(np.argmax(ok.to_numpy()))
+
+
+def limit_fill_in_seconds(secs: pd.DataFrame, side: int, trigger: float, limit: float):
+    """Fill price of a stop-limit order within the trigger minute, or None. Without quotes we
+    can't see the ask/bid, so the fill is assumed at the worst price the order allows."""
+    return None if limit_fill_second(secs, side, trigger, limit) is None else limit
 
 
 def exit_from(o, h, low, j: int, fill: float, side: int, stop_dist: float, close_px: float):
@@ -204,12 +206,9 @@ def stop_limit_trades(m: pd.DataFrame, rules: orb.OrbRules, offset: float) -> pd
     trades, not the bid/ask a real order would fill against.
     """
     out = []
+    cand = orb.CandidateBars(m, rules.minutes)
     for (day, ticker), g in m.groupby(["date", "ticker"]):
-        start = F.session_open(day.date()) + pd.Timedelta(minutes=rules.minutes)
-        end = F.session_open(day.date()) + orb.CLOSE_TIME
-        window = [("ticker", "==", ticker), ("ts", ">=", start), ("ts", "<", end)]
-        bars = pd.read_parquet(massive.local_path("minute", day.date()), filters=window)
-        bars = bars.sort_values("ts")
+        bars = cand.after_or(day, ticker)
         o, h, lo = (bars[f].to_numpy(float) for f in ("open", "high", "low"))
         for _, r in g.iterrows():
             side, k = int(r.side), int(r.entry_idx)

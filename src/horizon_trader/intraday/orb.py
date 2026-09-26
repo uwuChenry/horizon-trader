@@ -25,8 +25,12 @@ Simulation choices the paper doesn't spell out:
 from __future__ import annotations
 
 import argparse
+import json
+import os
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -50,6 +54,7 @@ class OrbRules:
     min_relvol: float = 1.0
     stop_atr: float = 0.10
     keep: int = 50  # candidates simulated per day; portfolios take the top N of these
+    min_dollar_volume: float = 0.0  # 14-day avg volume x prev close; a large-cap proxy
 
 
 RULES = OrbRules()
@@ -61,7 +66,9 @@ RULES = OrbRules()
 def select_candidates(day: pd.DataFrame, rules: OrbRules = RULES) -> pd.DataFrame:
     """Rank one day's tickers (index) by relative volume after the paper's filters.
 
-    `day` needs columns open, atr, avg_volume, relvol, or_open, or_close, opens_on_time.
+    `day` needs columns open, atr, avg_volume, relvol, or_open, or_close, opens_on_time
+    (and prev_close when a dollar-volume floor is set). Both avg_volume and prev_close
+    come from days before t, so the filter is known at the open.
     """
     ok = (
         day["opens_on_time"].fillna(False).astype(bool)
@@ -71,6 +78,8 @@ def select_candidates(day: pd.DataFrame, rules: OrbRules = RULES) -> pd.DataFram
         & (day["relvol"] >= rules.min_relvol)
         & (day["or_close"] != day["or_open"])
     )
+    if rules.min_dollar_volume > 0:  # before the top-N cut, or large caps ranked low vanish
+        ok &= day["avg_volume"] * day["prev_close"] >= rules.min_dollar_volume
     c = day[ok].sort_index().sort_values("relvol", ascending=False, kind="stable").head(rules.keep)
     c = c.assign(side=np.sign(c["or_close"] - c["or_open"]).astype(int))
     return c.assign(rank=np.arange(1, len(c) + 1))
@@ -163,86 +172,215 @@ def simulate_day(
 # ---------------------------------------------------------------- building the trade table
 
 
+def _derived_path(name: str, suffix: str = ".parquet") -> Path:
+    return data_dir() / "massive" / "derived" / f"{name}{suffix}"
+
+
 def _derived(name: str) -> pd.DataFrame | None:
-    path = data_dir() / "massive" / "derived" / f"{name}.parquet"
+    path = _derived_path(name)
     return pd.read_parquet(path) if path.exists() else None
 
 
 def _save(df: pd.DataFrame, name: str) -> None:
-    path = data_dir() / "massive" / "derived" / f"{name}.parquet"
+    path = _derived_path(name)
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(path, index=False)
+    tmp = path.with_suffix(".tmp")
+    df.to_parquet(tmp, index=False)
+    tmp.replace(path)  # atomic: an interrupted save never corrupts the cache
+
+
+def _done_days(name: str) -> set[date] | None:
+    """Days already processed for a cache (including days with nothing to store)."""
+    path = _derived_path(name, ".days.json")
+    return {date.fromisoformat(d) for d in json.loads(path.read_text())} if path.exists() else None
+
+
+def _save_done_days(name: str, days: set[date]) -> None:
+    _derived_path(name, ".days.json").write_text(json.dumps(sorted(map(str, days))))
+
+
+def workers(n: int | None = None) -> int:
+    """Worker processes for parallel steps: all cores but two, unless told otherwise."""
+    return max(1, n if n is not None else (os.cpu_count() or 2) - 2)
+
+
+def _parallel(fn, jobs: list, n_workers: int | None, label: str) -> list:
+    """fn(job) for every job, in worker processes, results in job order. Tiny batches run
+    serially, where starting processes would cost more than it saves."""
+    n = workers(n_workers)
+    if n == 1 or len(jobs) < 8:
+        return [fn(j) for j in jobs]
+    out = []
+    with ProcessPoolExecutor(max_workers=n) as pool:
+        chunk = max(1, len(jobs) // (n * 4))
+        for i, res in enumerate(pool.map(fn, jobs, chunksize=chunk), 1):
+            out.append(res)
+            if i % 200 == 0 or i == len(jobs):
+                print(f"  {label}: {i}/{len(jobs)} days", flush=True)
+    return out
 
 
 OR_COLS = ["or_open", "or_high", "or_low", "or_close", "or_volume", "opens_on_time"]
 
 
+def _or_job(job: tuple[date, int]) -> pd.DataFrame:
+    d, minutes = job
+    start = F.session_open(d)
+    window = [("ts", ">=", start), ("ts", "<", start + pd.Timedelta(minutes=minutes))]
+    bars = pd.read_parquet(massive.local_path("minute", d), filters=window)
+    return F.opening_range(bars, d, minutes).reset_index().assign(date=pd.Timestamp(d))
+
+
 def opening_ranges(
-    days: list[date], tickers: set[str], minutes: int, rebuild: bool = False
+    days: list[date], tickers: set[str], minutes: int, rebuild: bool = False, n_workers=None
 ) -> pd.DataFrame:
     """Opening range of every ticker on every day, cached (long format)."""
     name = f"or{minutes}"
     cached = None if rebuild else _derived(name)
     have = set() if cached is None else set(cached["date"].dt.date)
-    new = []
-    for i, d in enumerate(x for x in days if x not in have):
-        start = F.session_open(d)
-        window = [("ts", ">=", start), ("ts", "<", start + pd.Timedelta(minutes=minutes))]
-        bars = pd.read_parquet(massive.local_path("minute", d), filters=window)
-        new.append(F.opening_range(bars, d, minutes).reset_index().assign(date=pd.Timestamp(d)))
-        if (i + 1) % 100 == 0:
-            print(f"  opening ranges: {i + 1} new days", flush=True)
+    missing = [d for d in days if d not in have]
+    new = _parallel(_or_job, [(d, minutes) for d in missing], n_workers, "opening ranges")
     if new:
         cached = pd.concat([cached, *new] if cached is not None else new, ignore_index=True)
         _save(cached, name)
-    out = cached[cached["ticker"].isin(tickers) & cached["date"].dt.date.isin(set(days))]
-    return out
+    return cached[cached["ticker"].isin(tickers) & cached["date"].dt.date.isin(set(days))]
 
 
-def build_trades(rules: OrbRules = RULES, rebuild: bool = False) -> pd.DataFrame:
-    """Candidates and simulated trades for every day with minute data (cached)."""
+def _session_window(d: date, tickers: list[str]) -> list:
+    start = F.session_open(d)
+    return [("ticker", "in", tickers), ("ts", ">=", start), ("ts", "<", start + CLOSE_TIME)]
+
+
+def _simulate_job(job: tuple[date, pd.DataFrame, OrbRules]) -> pd.DataFrame:
+    d, cands, rules = job
+    window = _session_window(d, list(cands.index))
+    session = pd.read_parquet(massive.local_path("minute", d), filters=window)
+    return simulate_day(session, cands, d, rules)
+
+
+def build_trades(rules: OrbRules = RULES, rebuild: bool = False, n_workers=None) -> pd.DataFrame:
+    """Candidates and simulated trades for every day with minute data (cached).
+
+    Returns straight from the cache when every day has been processed; otherwise builds the
+    daily features and simulates the missing days in parallel worker processes.
+    """
     name = f"orb{rules.minutes}_stop{rules.stop_atr:g}_trades"
+    if rules.min_dollar_volume > 0:
+        name += f"_dv{rules.min_dollar_volume / 1e6:g}M"
     minute_days = massive.local_days("minute")
     day_days = massive.local_days("day")
+    days = [d for d in minute_days if d in set(day_days)]
     cached = None if rebuild else _derived(name)
-    done = set() if cached is None else set(cached["date"].dt.date)
+    done = set() if cached is None else (_done_days(name) or set(cached["date"].dt.date))
+    todo = [d for d in days if d not in done]
+    if not todo:
+        return cached.sort_values(["date", "rank"], ignore_index=True)
 
     common = massive_ref.load_common_tickers()
     panels = F.load_daily_panels(day_days, common)
-    factor = F.split_factors(
-        panels["open"].index, panels["open"].columns, massive_ref.load_splits()
-    )
+    splits = massive_ref.load_splits()
+    factor = F.split_factors(panels["open"].index, panels["open"].columns, splits)
     feats = F.daily_features(panels, factor, rules.lookback)
-
-    days = [d for d in minute_days if d in set(day_days)]
-    ors = opening_ranges(days, common, rules.minutes, rebuild)
+    ors = opening_ranges(days, common, rules.minutes, rebuild, n_workers)
     wide = {c: ors.pivot(index="date", columns="ticker", values=c) for c in OR_COLS}
     idx = pd.DatetimeIndex([pd.Timestamp(d) for d in days])
-    fac = factor.reindex(idx)
     traded = panels["volume"].reindex(idx).fillna(0) > 0
-    relvol = F.relative_volume(wide["or_volume"], fac, traded, rules.lookback)
+    relvol = F.relative_volume(wide["or_volume"], factor.reindex(idx), traded, rules.lookback)
 
-    new = []
-    todo = [d for d in days if d not in done]
-    for i, d in enumerate(todo):
+    jobs = []
+    for d in todo:  # candidate selection is cheap but needs the big panels: do it here
         t = pd.Timestamp(d)
         day = pd.DataFrame({k: v.loc[t] for k, v in feats.items()})
         day = day.join(pd.DataFrame({k: v.loc[t] for k, v in wide.items()}), how="inner")
         day["relvol"] = relvol.loc[t]
         cands = select_candidates(day, rules)
-        if cands.empty:
-            continue
-        start = F.session_open(d)
-        window = [("ts", ">=", start), ("ts", "<", start + CLOSE_TIME)]
-        filters = [("ticker", "in", list(cands.index)), *window]
-        session = pd.read_parquet(massive.local_path("minute", d), filters=filters)
-        new.append(simulate_day(session, cands, d, rules))
-        if (i + 1) % 100 == 0:
-            print(f"  simulated {i + 1}/{len(todo)} days", flush=True)
+        if not cands.empty:
+            jobs.append((d, cands, rules))
+    new = _parallel(_simulate_job, jobs, n_workers, "simulated")
     if new:
         cached = pd.concat([cached, *new] if cached is not None else new, ignore_index=True)
         _save(cached, name)
+    _save_done_days(name, done | set(todo))
     return cached.sort_values(["date", "rank"], ignore_index=True)
+
+
+# ---------------------------------------------------------------- candidate minute bars
+
+
+def _done_pairs(name: str, cached: pd.DataFrame | None) -> set[tuple[date, str]]:
+    """(day, ticker) pairs already fetched for a bar cache (including ones with no bars)."""
+    path = _derived_path(name, ".pairs.json")
+    if path.exists():
+        return {(date.fromisoformat(d), t) for d, t in json.loads(path.read_text())}
+    if cached is None:  # older caches tracked days only: rebuild the pair list from the data
+        return set()
+    pairs = cached[["date", "ticker"]].drop_duplicates()
+    return {(d.date(), str(t)) for d, t in zip(pairs["date"], pairs["ticker"], strict=True)}
+
+
+def _save_done_pairs(name: str, pairs: set[tuple[date, str]]) -> None:
+    rows = sorted([str(d), t] for d, t in pairs)
+    _derived_path(name, ".pairs.json").write_text(json.dumps(rows))
+
+
+def _cand_bars_job(job: tuple[date, list[str]]) -> pd.DataFrame:
+    d, tickers = job
+    bars = pd.read_parquet(massive.local_path("minute", d), filters=_session_window(d, tickers))
+    return bars.assign(date=pd.Timestamp(d))
+
+
+class CandidateBars:
+    """Every candidate's 9:30-16:00 minute bars, from one cached file (about 1 GB in memory).
+
+    Built once from the minute files for the tickers in the trade table. Candidate selection
+    doesn't depend on the stop width, so one cache serves every stop. A (day, ticker) lookup
+    is a dictionary hit instead of decoding a 1.5M-row day file.
+    """
+
+    COLS = ["date", "ticker", "ts", "open", "high", "low", "close", "volume"]
+    PRICES = ("open", "high", "low", "close", "volume")
+
+    def __init__(self, trades: pd.DataFrame, minutes: int = RULES.minutes, n_workers=None):
+        name = f"cand_bars_or{minutes}"
+        cached = _derived(name)
+        done = _done_pairs(name, cached)
+        wanted = {(d.date(), tk) for d, tk in zip(trades["date"], trades["ticker"], strict=True)}
+        missing: dict[date, list[str]] = {}
+        for d, tk in sorted(wanted - done):  # per (day, ticker): a new filter adds new tickers
+            missing.setdefault(d, []).append(tk)
+        jobs = sorted(missing.items())
+        new = _parallel(_cand_bars_job, jobs, n_workers, "candidate bars")
+        if new:
+            new = pd.concat(new, ignore_index=True)[self.COLS]
+            cached = new if cached is None else pd.concat([cached, new], ignore_index=True)
+            _save(cached, name)
+        if jobs or not _derived_path(name, ".pairs.json").exists():
+            _save_done_pairs(name, done | {(d, tk) for d, tks in jobs for tk in tks})
+        df = cached.sort_values(["date", "ticker", "ts"], ignore_index=True)
+        self.minutes = minutes
+        self._ts = df["ts"].dt.tz_convert(massive.TZ)
+        self._cols = {c: df[c].to_numpy(float) for c in self.PRICES}
+        day_ns = df["date"].to_numpy().astype("datetime64[ns]").astype("int64")
+        tick = df["ticker"].astype(str).to_numpy()
+        change = np.r_[True, (day_ns[1:] != day_ns[:-1]) | (tick[1:] != tick[:-1])]
+        starts = np.flatnonzero(change)
+        ends = np.r_[starts[1:], len(df)]
+        self._slices = {
+            (int(day_ns[a]), tick[a]): (a, b) for a, b in zip(starts, ends, strict=True)
+        }
+
+    def session(self, day: pd.Timestamp, ticker: str) -> pd.DataFrame:
+        """That day's 9:30-16:00 bars for the ticker, sorted by time (empty if unknown)."""
+        a, b = self._slices.get((pd.Timestamp(day).value, ticker), (0, 0))
+        out = pd.DataFrame({c: v[a:b] for c, v in self._cols.items()})
+        out.insert(0, "ts", self._ts.iloc[a:b].reset_index(drop=True))
+        return out
+
+    def after_or(self, day: pd.Timestamp, ticker: str) -> pd.DataFrame:
+        """Bars from the end of the opening range to the close: what the simulators index."""
+        s = self.session(day, ticker)
+        cut = F.session_open(pd.Timestamp(day).date()) + pd.Timedelta(minutes=self.minutes)
+        return s[s["ts"] >= cut].reset_index(drop=True)
 
 
 # ---------------------------------------------------------------- portfolio accounting
@@ -250,6 +388,7 @@ def build_trades(rules: OrbRules = RULES, rebuild: bool = False) -> pd.DataFrame
 PLANS: dict[str, CostModel] = {
     "none": CostModel(per_share=0.0, min_per_order=0.0),
     "paper": CostModel(per_share=0.0035, min_per_order=0.0),  # what the paper charged
+    "paper_2023": CostModel(per_share=0.0005, min_per_order=0.0),  # QQQ ORB paper (2023)
     **IBKR_PLANS,  # fixed / tiered, incl. pass-through and regulatory fees (execution/costs.py)
 }
 LITE = CostModel(per_share=0.0, min_per_order=0.0, sec_fee_rate=SEC_FEE, taf_per_share=FINRA_TAF)
@@ -271,21 +410,27 @@ class Account:
 def trade_costs(qty, entry, exit_, side, plan: str, at_close=None) -> np.ndarray:
     """All-in cost (commission + pass-through + regulatory fees) of the entry and exit orders.
 
+    Vectorized version of CostModel.total() for a round trip (a test keeps the two equal).
     "lite" (IBKR Lite, US residents only): $0 commission during regular hours, but close-auction
     (MOC) exits are only free while auction volume stays under 10% of the month's shares. ORB
     exits most trades at the close, so those pay the lesser of $0.005/share or 1% of value.
     """
-    model = LITE if plan == "lite" else PLANS[plan]
-    buy_first = np.asarray(side) > 0
-    cost = np.array(
-        [
-            model.total(q if long else -q, a) + model.total(-q if long else q, b)
-            for q, a, b, long in zip(qty, entry, exit_, buy_first, strict=True)
-        ]
+    m = LITE if plan == "lite" else PLANS[plan]
+    q, entry, exit_ = (
+        np.abs(np.asarray(qty, float)),
+        np.asarray(entry, float),
+        np.asarray(exit_, float),
     )
+
+    def commission(px):
+        return np.minimum(np.maximum(m.min_per_order, q * m.per_share), m.max_pct_of_value * q * px)
+
+    sell_px = np.where(np.asarray(side) > 0, exit_, entry)  # long sells at the exit, short at entry
+    cost = commission(entry) + commission(exit_) + 2 * q * m.pass_through_per_share
+    cost = cost + q * sell_px * m.sec_fee_rate + q * m.taf_per_share
     if plan == "lite":
-        at_close = np.ones(len(qty), bool) if at_close is None else np.asarray(at_close, bool)
-        cost += np.where(at_close, np.minimum(0.005 * qty, 0.01 * qty * exit_), 0.0)
+        at_close = np.ones(len(q), bool) if at_close is None else np.asarray(at_close, bool)
+        cost = cost + np.where(at_close, np.minimum(0.005 * q, 0.01 * q * exit_), 0.0)
     return cost
 
 
@@ -300,37 +445,55 @@ def run_portfolio(
     """
     days = calendar if calendar is not None else pd.DatetimeIndex(sorted(trades["date"].unique()))
     live = trades[(trades["rank"] <= acct.top_n) & trades["triggered"]]
-    by_day = dict(tuple(live.groupby("date")))
+    live = live.sort_values("date", kind="stable")  # same within-day order as a groupby
     m = acct.same_bar
-    equity, curve, fills = acct.equity, {}, []
+    side = live["side"].to_numpy()
+    if acct.slippage is None:  # measured, per trade
+        slip_in, slip_out = live["entry_slip"].to_numpy(), live["exit_slip"].to_numpy()
+    else:
+        slip_in = slip_out = np.full(len(live), float(acct.slippage))
+    stopped = live[f"stopped_{m}"].to_numpy(bool)
+    entry = live["entry_px"].to_numpy(float) + side * slip_in
+    exit_ = live[f"exit_px_{m}"].to_numpy(float) - side * slip_out * stopped
+    stop_dist = live["stop_dist"].to_numpy(float)
+    dates = live["date"].to_numpy()
+    starts = (
+        np.flatnonzero(np.r_[True, dates[1:] != dates[:-1]]) if len(live) else np.array([], int)
+    )
+    ends = np.r_[starts[1:], len(live)]
+    by_day = {pd.Timestamp(dates[a]): (a, b) for a, b in zip(starts, ends, strict=True)}
+
+    equity, curve = acct.equity, []
+    idx, cols = [], {k: [] for k in ("qty", "pnl", "costs", "gross")}
     for d in days:
-        t = by_day.get(d)
-        if t is not None and equity > 0:
-            side = t["side"].to_numpy()
-            if acct.slippage is None:  # measured, per trade
-                slip_in, slip_out = t["entry_slip"].to_numpy(), t["exit_slip"].to_numpy()
-            else:
-                slip_in = slip_out = acct.slippage
-            entry = t["entry_px"].to_numpy() + side * slip_in
-            stopped = t[f"stopped_{m}"].to_numpy(bool)
-            exit_ = t[f"exit_px_{m}"].to_numpy() - side * slip_out * stopped
-            cap = acct.leverage * equity / acct.top_n / entry
-            qty = np.floor(np.minimum(acct.risk * equity / t["stop_dist"].to_numpy(), cap))
+        span = by_day.get(d)
+        if span is not None and equity > 0:
+            a, b = span
+            s, e, x = side[a:b], entry[a:b], exit_[a:b]
+            cap = acct.leverage * equity / acct.top_n / e
+            qty = np.floor(np.minimum(acct.risk * equity / stop_dist[a:b], cap))
             ok = qty >= 1
-            gross = side * qty * (exit_ - entry)
-            q1 = np.maximum(qty, 1)
-            costs = np.where(ok, trade_costs(q1, entry, exit_, side, acct.plan, ~stopped), 0)
+            gross = s * qty * (x - e)
+            costs = np.where(
+                ok, trade_costs(np.maximum(qty, 1), e, x, s, acct.plan, ~stopped[a:b]), 0
+            )
             pnl = np.where(ok, gross - costs, 0.0)
             equity += pnl.sum()
-            fills.append(
-                t.assign(qty=qty, pnl=pnl, costs=costs, gross=np.where(ok, gross, 0)).assign(
-                    entry_fill=entry, exit_fill=exit_, stopped=stopped
-                )[ok]
-            )
-        curve[d] = equity
-    curve = {days[0] - pd.Timedelta(days=1): acct.equity} | curve  # starting capital
-    fills_df = pd.concat(fills, ignore_index=True) if fills else pd.DataFrame()
-    return pd.Series(curve, name="equity"), fills_df
+            keep = np.flatnonzero(ok)
+            idx.append(a + keep)
+            for k, v in (("qty", qty), ("pnl", pnl), ("costs", costs), ("gross", gross)):
+                cols[k].append(v[keep])
+        curve.append(equity)
+    series = pd.Series(
+        [acct.equity, *curve], index=[days[0] - pd.Timedelta(days=1), *days], name="equity"
+    )
+    if not idx:
+        return series, pd.DataFrame()
+    rows = np.concatenate(idx)
+    fills = live.iloc[rows].reset_index(drop=True)
+    fills = fills.assign(**{k: np.concatenate(v) for k, v in cols.items()})
+    fills = fills.assign(entry_fill=entry[rows], exit_fill=exit_[rows], stopped=stopped[rows])
+    return series, fills
 
 
 def r_multiple(trades: pd.DataFrame, mode: str = "cons") -> pd.Series:
@@ -350,19 +513,11 @@ def bundle_trades(fills: pd.DataFrame, rules: OrbRules, mode: str = "path") -> p
     overstatements).
     """
     out = []
+    cand = CandidateBars(fills, rules.minutes)
     for day, g in fills.groupby("date"):
         start = F.session_open(day.date())
-        after_or = start + pd.Timedelta(minutes=rules.minutes)
-        tickers = sorted(set(g["ticker"]))
-        window = [
-            ("ts", ">=", after_or),
-            ("ts", "<", start + CLOSE_TIME),
-            ("ticker", "in", tickers),
-        ]
-        bars = pd.read_parquet(massive.local_path("minute", day.date()), filters=window)
-        by_ticker = {tk: b.sort_values("ts") for tk, b in bars.groupby("ticker")}
         for _, r in g.iterrows():
-            b = by_ticker[r.ticker]
+            b = cand.after_or(day, r.ticker)
             k, j = int(r.entry_idx), int(r[f"exit_idx_{mode}"])
             path = b.iloc[k : min(j, len(b) - 1) + 1]
             side, entry = int(r.side), r.entry_fill
@@ -381,13 +536,13 @@ def bundle_trades(fills: pd.DataFrame, rules: OrbRules, mode: str = "path") -> p
                     "costs": r.costs,
                     "pnl": r.pnl,
                     "R": side * (r.exit_fill - entry) / r.stop_dist,
-                    "exit_reason": "stop" if r.stopped else "close",
+                    "exit_reason": r.get("exit_reason", "stop" if r.stopped else "close"),
                     "stop_px": entry - side * r.stop_dist,
                     "mae_R": side * (entry - worst) / r.stop_dist,
                     "mfe_R": side * (best - entry) / r.stop_dist,
-                    "rank": r["rank"],
-                    "relvol": r.relvol,
-                    "atr": r.atr,
+                    "rank": r.get("rank"),
+                    "relvol": r.get("relvol"),
+                    "atr": r.get("atr"),
                 }
             )
     return pd.DataFrame(out)

@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-APP = Path(__file__).with_name("app.py")
+APP = Path(__file__).with_name("nav.py")  # Backtests + Research pages
 
 if __name__ == "__main__":
     # Streamlit phones home with usage stats by default; not for a personal trading tool.
