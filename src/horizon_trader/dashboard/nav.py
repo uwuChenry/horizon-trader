@@ -1,4 +1,5 @@
-"""Dashboard entry point: the backtest browser, strategy holdings and the research notes."""
+"""Dashboard entry point: the backtest browser, strategy holdings, the ORB day viewer and the
+research notes."""
 
 from pathlib import Path
 
@@ -11,6 +12,7 @@ st.navigation(
     [
         st.Page(HERE / "app.py", title="Backtests", icon=":material/monitoring:", default=True),
         st.Page(HERE / "holdings.py", title="Holdings", icon=":material/pie_chart:"),
+        st.Page(HERE / "orb_day.py", title="ORB day", icon=":material/candlestick_chart:"),
         st.Page(HERE / "research.py", title="Research", icon=":material/menu_book:"),
     ]
 ).run()
