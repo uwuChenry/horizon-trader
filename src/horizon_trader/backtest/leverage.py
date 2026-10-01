@@ -35,7 +35,7 @@ import pandas as pd
 
 from horizon_trader.backtest import analytics as A
 from horizon_trader.config import data_dir
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources.store import load_bars
 from horizon_trader.execution.costs import ibkr_costs
 
 SPREAD = 0.015  # IBKR Pro, USD loans up to $100k: benchmark (Fed funds) + 1.5%

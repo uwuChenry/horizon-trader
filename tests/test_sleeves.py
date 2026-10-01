@@ -6,6 +6,7 @@ from horizon_trader.features.price import month_starts
 from horizon_trader.sleeves.macd import MacdSleeve
 from horizon_trader.sleeves.mean_reversion import MeanReversionSleeve
 from horizon_trader.sleeves.momentum import MomentumRotationSleeve
+from horizon_trader.sleeves.risk_parity import RiskParitySleeve
 from horizon_trader.sleeves.static import StaticSleeve
 from horizon_trader.sleeves.trend import TrendFollowingSleeve
 from horizon_trader.sleeves.vol_managed import VolManagedSleeve
@@ -17,6 +18,7 @@ SLEEVES = [
     TrendFollowingSleeve("tf"),
     VolManagedSleeve("vm", symbol="A"),
     MacdSleeve("macd", trend_window=200),
+    RiskParitySleeve("rp", vol_window=63, universe=list("ABCDE")),
 ]
 
 
@@ -101,3 +103,20 @@ def test_vol_managed_cuts_exposure_when_volatility_spikes():
     w = VolManagedSleeve("vm", target_vol=0.15).weights_history(prices)["SPY"]
     assert w.loc[: idx[299]].max() == 1.0  # calm: capped at no leverage
     assert w.loc[idx[330] :].min() < 0.2  # after a month of ~48% vol, exposure is cut
+
+
+def test_risk_parity_is_fully_invested_and_sizes_by_inverse_vol(random_prices):
+    prices = random_prices.copy()
+    prices["A"] = trend([0.002, -0.001] * 300)  # daily std 0.0015
+    prices["B"] = trend([0.006, -0.005] * 300)  # daily std 0.0055
+    prices["C"] = trend([-0.002, 0.001] * 300)  # falling, still owned (no trend filter)
+    sleeve = RiskParitySleeve("rp", vol_window=63, universe=["A", "B", "C"])
+    w = sleeve.weights_history(prices).iloc[-1]
+    assert w.sum() == pytest.approx(1.0)
+    assert w["A"] / w["B"] == pytest.approx(0.0055 / 0.0015, rel=0.02)
+    assert w["C"] > 0
+
+
+def test_risk_parity_waits_for_a_full_window(random_prices):
+    w = RiskParitySleeve("rp", universe=list("ABCDE")).weights_history(random_prices)
+    assert (w == 0).all().all()  # 756-day default window, only 600 days of data

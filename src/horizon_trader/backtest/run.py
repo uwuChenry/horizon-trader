@@ -13,7 +13,7 @@ import pandas as pd
 from horizon_trader.backtest.metrics import summarize
 from horizon_trader.backtest.sim import BacktestResult, simulate
 from horizon_trader.config import DEFAULT_CONFIG, RiskSettings, Settings, load_settings
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources.store import load_bars
 from horizon_trader.execution.costs import ibkr_costs
 from horizon_trader.portfolio import apply_risk_limits, combine_history
 from horizon_trader.sleeves import build_sleeve

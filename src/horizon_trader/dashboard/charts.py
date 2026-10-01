@@ -34,7 +34,7 @@ def trade_bars(trade: pd.Series, chart: str | None) -> pd.DataFrame:
     ("massive_minute") runs, +/- 40 days of daily bars otherwise. Empty if nothing is cached."""
     entry = pd.Timestamp(trade["entry_time"])
     if chart == "massive_minute":
-        from horizon_trader.data import massive
+        from horizon_trader.datasources import massive
 
         day = entry.tz_convert(massive.TZ).date() if entry.tzinfo else entry.date()
         path = massive.local_path("minute", day)

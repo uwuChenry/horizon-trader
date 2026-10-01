@@ -20,7 +20,7 @@ BarsLoader = Callable[[list[str]], dict[str, pd.DataFrame]]
 
 
 def _default_loader(symbols: list[str]) -> dict[str, pd.DataFrame]:
-    from horizon_trader.data.store import load_bars
+    from horizon_trader.datasources.store import load_bars
 
     return load_bars(symbols)
 

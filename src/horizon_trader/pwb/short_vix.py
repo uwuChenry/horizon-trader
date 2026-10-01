@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 
 from horizon_trader.backtest import analytics as A
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources.store import load_bars
 from horizon_trader.features.price import TRADING_DAYS
 from horizon_trader.pwb.audit import tbill_monthly
 

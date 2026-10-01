@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 
 from horizon_trader.config import REPO_ROOT, data_dir
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources.store import load_bars
 
 SITE = "https://paperswithbacktest.com/strategies"
 README = (

@@ -13,7 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from horizon_trader.data import massive
+from horizon_trader.datasources import massive
 from horizon_trader.intraday import features as F
 from horizon_trader.intraday import orb
 

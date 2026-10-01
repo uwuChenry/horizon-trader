@@ -37,8 +37,8 @@ import pandas as pd
 
 from horizon_trader.backtest.metrics import summarize
 from horizon_trader.config import data_dir
-from horizon_trader.data import massive
-from horizon_trader.execution.costs import IBKR_PLANS, CostModel
+from horizon_trader.datasources import massive
+from horizon_trader.execution.costs import FINRA_TAF, IBKR_PLANS, SEC_FEE, CostModel
 from horizon_trader.intraday import features as F
 
 SESSION = 390  # minutes in a full session
@@ -237,6 +237,10 @@ def daily_vol(daily: pd.DataFrame, lookback: int = LOOKBACK) -> pd.Series:
 PLANS: dict[str, CostModel] = {
     "none": CostModel(per_share=0.0, min_per_order=0.0),
     "paper": CostModel(per_share=0.0035, min_per_order=0.0),
+    # $0-commission broker (orders routed to wholesalers): SEC + FINRA fees on sells still apply
+    "zero": CostModel(
+        per_share=0.0, min_per_order=0.0, sec_fee_rate=SEC_FEE, taf_per_share=FINRA_TAF
+    ),
     **IBKR_PLANS,
 }
 

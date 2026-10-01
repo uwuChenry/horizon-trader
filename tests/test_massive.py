@@ -5,7 +5,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from horizon_trader.data import massive
+from horizon_trader.datasources import massive
 
 # 2024-03-01 09:30 and 09:31 America/New_York (14:30 UTC), in Unix nanoseconds
 T0 = 1709303400 * 10**9

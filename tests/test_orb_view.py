@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from horizon_trader.data import massive
+from horizon_trader.datasources import massive
 from horizon_trader.intraday import features as F
 from horizon_trader.intraday import orb
 

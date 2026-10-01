@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 
 from horizon_trader.config import data_dir
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources.store import load_bars
 from horizon_trader.pwb.audit import tbill_monthly
 
 MEMBERS_URL = (

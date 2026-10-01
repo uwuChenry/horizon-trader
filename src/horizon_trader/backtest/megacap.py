@@ -31,9 +31,9 @@ import pandas as pd
 
 from horizon_trader.backtest import analytics as A
 from horizon_trader.backtest import bundle
-from horizon_trader.data import massive, massive_ref
-from horizon_trader.data.massive_ref import API, _http_get
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources import massive, massive_ref
+from horizon_trader.datasources.massive_ref import API, _http_get
+from horizon_trader.datasources.store import load_bars
 from horizon_trader.intraday import features as F
 
 ETFS = {

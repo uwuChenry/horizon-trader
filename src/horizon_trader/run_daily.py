@@ -47,7 +47,7 @@ def run(
         raise SystemExit("Live execution not wired up yet (IBKR adapter is phase 4); use --dry-run")
     settings = load_settings(config)
     if fetch is None:
-        from horizon_trader.data.yf_source import fetch_closes as fetch
+        from horizon_trader.datasources.yf_source import fetch_closes as fetch
 
     prices = fetch(sorted(set(settings.universe)))
     broker = PaperBroker(cash=settings.account.starting_cash)

@@ -4,7 +4,7 @@ import pytest
 from horizon_trader.backtest.metrics import max_drawdown, summarize
 from horizon_trader.backtest.sim import simulate
 from horizon_trader.config import ExecutionSettings
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources.store import load_bars
 from horizon_trader.execution import ZERO_COSTS, CostModel
 from horizon_trader.execution.costs import (
     CLEARING,

@@ -55,7 +55,7 @@ from horizon_trader.backtest import bundle
 from horizon_trader.backtest import winners as W
 from horizon_trader.backtest.sim import simulate
 from horizon_trader.config import ExecutionSettings
-from horizon_trader.data import massive, massive_ref
+from horizon_trader.datasources import massive, massive_ref
 from horizon_trader.execution.costs import ZERO_COSTS, ibkr_costs
 from horizon_trader.intraday import features as F
 from horizon_trader.social import archive, stance

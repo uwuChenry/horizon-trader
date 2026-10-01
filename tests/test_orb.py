@@ -232,7 +232,7 @@ def test_vectorized_costs_match_cost_model(plan):
 
 
 def test_candidate_bars_cache_matches_the_minute_file(tmp_path, monkeypatch):
-    from horizon_trader.data import massive
+    from horizon_trader.datasources import massive
 
     monkeypatch.setenv("HT_DATA_DIR", str(tmp_path))
     day = date(2024, 3, 1)
@@ -269,7 +269,7 @@ def test_dollar_volume_floor_filters_before_the_top_n_cut():
 
 
 def test_candidate_bars_fetch_new_tickers_on_days_already_cached(tmp_path, monkeypatch):
-    from horizon_trader.data import massive
+    from horizon_trader.datasources import massive
 
     monkeypatch.setenv("HT_DATA_DIR", str(tmp_path))
     day = date(2024, 3, 1)

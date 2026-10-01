@@ -8,6 +8,7 @@ from horizon_trader.sleeves.base import PanelSleeve, Sleeve
 from horizon_trader.sleeves.macd import MacdSleeve
 from horizon_trader.sleeves.mean_reversion import MeanReversionSleeve
 from horizon_trader.sleeves.momentum import MomentumRotationSleeve
+from horizon_trader.sleeves.risk_parity import RiskParitySleeve
 from horizon_trader.sleeves.static import StaticSleeve
 from horizon_trader.sleeves.trend import TrendFollowingSleeve
 from horizon_trader.sleeves.vol_managed import VolManagedSleeve
@@ -20,6 +21,7 @@ SLEEVE_TYPES = {
     "vol_managed": VolManagedSleeve,
     "macd": MacdSleeve,
     "alpha": AlphaSleeve,
+    "risk_parity": RiskParitySleeve,
 }
 
 

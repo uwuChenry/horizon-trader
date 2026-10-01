@@ -12,7 +12,7 @@ from datetime import date, time
 import numpy as np
 import pandas as pd
 
-from horizon_trader.data import massive
+from horizon_trader.datasources import massive
 
 TZ = massive.TZ
 OPEN = time(9, 30)

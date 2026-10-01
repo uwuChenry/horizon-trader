@@ -25,8 +25,8 @@ import numpy as np
 import pandas as pd
 
 from horizon_trader.config import data_dir
-from horizon_trader.data import massive
-from horizon_trader.data.massive_ref import API, _http_get
+from horizon_trader.datasources import massive
+from horizon_trader.datasources.massive_ref import API, _http_get
 from horizon_trader.intraday import orb
 
 MINUTE = pd.Timedelta(minutes=1)

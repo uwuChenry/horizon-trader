@@ -44,6 +44,7 @@ PARAM_GRIDS: dict[str, dict[str, list[Any]]] = {
     "mean_reversion": {"entry": [5, 10, 15], "exit": [60, 70, 80]},
     "macd": {"fast": [8, 12, 16], "slow": [21, 26, 39]},
     "alpha": {"top_n": [3, 5, 10], "rebalance": ["monthly", "weekly"]},
+    "risk_parity": {"vol_window": [63, 252, 756]},
 }
 
 Bars = dict[str, pd.DataFrame]

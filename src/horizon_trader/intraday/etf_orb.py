@@ -46,7 +46,7 @@ import pandas as pd
 
 from horizon_trader.backtest import analytics as A
 from horizon_trader.config import REPO_ROOT
-from horizon_trader.data import massive, massive_ref
+from horizon_trader.datasources import massive, massive_ref
 from horizon_trader.intraday import features as F
 from horizon_trader.intraday import market_momentum as MM
 from horizon_trader.intraday import orb

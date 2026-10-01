@@ -44,7 +44,7 @@ import pandas as pd
 
 from horizon_trader.backtest import analytics as A
 from horizon_trader.config import REPO_ROOT
-from horizon_trader.data import massive
+from horizon_trader.datasources import massive
 from horizon_trader.intraday import orb
 from horizon_trader.intraday import orb_ideas as I
 from horizon_trader.intraday.slippage import TICK, fetch_seconds, limit_fill_second

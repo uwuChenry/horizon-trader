@@ -25,7 +25,7 @@ from horizon_trader.backtest.metrics import summarize
 from horizon_trader.backtest.run import format_report
 from horizon_trader.backtest.sim import simulate
 from horizon_trader.config import DEFAULT_CONFIG, REPO_ROOT, load_settings
-from horizon_trader.data.store import load_bars
+from horizon_trader.datasources.store import load_bars
 from horizon_trader.execution.costs import ZERO_COSTS, ibkr_costs
 from horizon_trader.sleeves.alpha import AlphaSleeve
 from horizon_trader.sleeves.static import StaticSleeve

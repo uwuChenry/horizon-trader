@@ -37,7 +37,7 @@ import pandas as pd
 
 from horizon_trader.backtest.metrics import summarize
 from horizon_trader.config import data_dir
-from horizon_trader.data import massive, massive_ref
+from horizon_trader.datasources import massive, massive_ref
 from horizon_trader.execution.costs import FINRA_TAF, IBKR_PLANS, SEC_FEE, CostModel
 from horizon_trader.intraday import features as F
 
