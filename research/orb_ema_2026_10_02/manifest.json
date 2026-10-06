@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "candle_minutes": 5,
+    "ema_span": 12,
+    "opening_minutes": 5,
+    "warmup_sessions": 5
+  },
+  "input_key": "3c4d1edd43a31ba3c71ae9c0ab747417771a013eacf86a8c394681f2d386fd57",
+  "sessions": 1240,
+  "first": "2021-10-22",
+  "last": "2026-10-01",
+  "skipped": 0,
+  "signal_trials": 20,
+  "sha256": {
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\massive\\derived\\orb5_stop1_trades.parquet": "bb8faae28879ed8f31628a4d45dd0c6e5ed9adc657e35d7f691590c6d7d07896",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\massive\\reference\\splits.parquet": "ab4ec035c4207202c087d0893bbd4016faeb7419e48e3af4ed32d910cb160bfb",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\src\\horizon_trader\\intraday\\orb_ema.py": "5a9c2bfe0b3501556b5777eab838135e93e39d84b45bf48abb91334b5b1a7097",
+    "research\\orb_ema_2026_10_02\\protocol.md": "6be1d206cef6cf1fd54d3f4c1c503baa074598d3f9a653d70f84ff887a26a7d2"
+  }
+}

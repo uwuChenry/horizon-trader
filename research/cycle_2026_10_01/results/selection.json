@@ -1,0 +1,16 @@
+{
+  "selected": "rotation_126",
+  "fallback": false,
+  "ranking_metric": "cagr",
+  "matched_weights": {
+    "rotation_126": 0.950299418115089,
+    "rotation_252": 0.9766944666207426,
+    "trend_200": 0.8191424729206043,
+    "voltrend_20": 1.027274017120015
+  },
+  "config_sha256": "79d7c9fd684da7a3ed9951225f91a01ed4a56b056df3134dec0b1d256380cd66",
+  "protocol_sha256": "dc99f9ed3d1f1770dfc0a8f8ba992597ab457ce597cb590834faa682861e1115",
+  "written_utc": "2026-10-01T08:27:04.294491+00:00",
+  "development_end": "2015-12-31",
+  "holdout_status": "No untouched holdout; historical validation and confirmation reused"
+}

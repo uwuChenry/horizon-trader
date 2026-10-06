@@ -1,0 +1,15 @@
+{
+  "stage": "develop",
+  "python": "3.12.14",
+  "numpy": "2.5.3",
+  "pandas": "3.0.6",
+  "config_sha256": "79d7c9fd684da7a3ed9951225f91a01ed4a56b056df3134dec0b1d256380cd66",
+  "input_manifest_sha256": "969528630b2152639a3ba0a008468c6121c61de1ca771ff46e21a173b6f66657",
+  "code_hashes": {
+    "src\\horizon_trader\\backtest\\research_cycle.py": "b5b387a1280bb11dc118269b4b8c63edb922a5842df831431cb824263a4ca860",
+    "src\\horizon_trader\\backtest\\research_account.py": "5ca63e02f4fa8d6c0592022b6ddb2e117c539671f333fa34ffbc4699c755c43a",
+    "src\\horizon_trader\\backtest\\research_stats.py": "49dee125af5d83da226b330405670b8df781901dac94e2c158aff6cfbd2f7e5c",
+    "src\\horizon_trader\\sleeves\\research_cycle.py": "2ce357d542dbf1788aadd0f93ead8e07291d568a7f4308ebd36700ec16f45f00"
+  },
+  "timestamp_utc": "2026-10-01T08:27:03.777814+00:00"
+}

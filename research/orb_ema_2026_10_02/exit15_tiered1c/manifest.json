@@ -1,0 +1,34 @@
+{
+  "rules": {
+    "candle_minutes": 5,
+    "exit_candle_minutes": 15,
+    "ema_span": 12,
+    "opening_minutes": 5,
+    "warmup_sessions": 5
+  },
+  "cost_cases": [
+    [
+      "gross",
+      "none",
+      0.0
+    ],
+    [
+      "tiered_1c",
+      "tiered",
+      0.01
+    ]
+  ],
+  "trades_path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\orb_ema_2026_10_02\\trades_5m_exit15m.parquet",
+  "input_key": "3c4d1edd43a31ba3c71ae9c0ab747417771a013eacf86a8c394681f2d386fd57",
+  "sessions": 1240,
+  "first": "2021-10-22",
+  "last": "2026-10-01",
+  "skipped": 0,
+  "signal_trials": 20,
+  "sha256": {
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\massive\\derived\\orb5_stop1_trades.parquet": "bb8faae28879ed8f31628a4d45dd0c6e5ed9adc657e35d7f691590c6d7d07896",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\massive\\reference\\splits.parquet": "ab4ec035c4207202c087d0893bbd4016faeb7419e48e3af4ed32d910cb160bfb",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\src\\horizon_trader\\intraday\\orb_ema.py": "5d08e88887705a14c26df8d5ba0d1488ed8f3ea3169df76a2e416a0ed5fecdb1",
+    "research\\orb_ema_2026_10_02\\exit15_tiered1c\\protocol.md": "b32d4467f1b3034a803539a995e04e7cea9cbe8fbbe10b38e5e0b012fd9bc83e"
+  }
+}

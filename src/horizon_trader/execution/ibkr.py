@@ -17,12 +17,13 @@ import horizon_trader.config  # noqa: F401  (loads .env)
 SUMMARY_TAGS = ("NetLiquidation", "TotalCashValue", "BuyingPower", "AvailableFunds")
 
 
-def connect(readonly: bool = True) -> IB:
+def connect(readonly: bool = True, client_id: int | None = None) -> IB:
+    """`client_id` overrides IB_CLIENT_ID so tools can run next to the daily run."""
     ib = IB()
     ib.connect(
         host=os.environ.get("IB_HOST", "127.0.0.1"),
         port=int(os.environ.get("IB_PORT", "4002")),
-        clientId=int(os.environ.get("IB_CLIENT_ID", "1")),
+        clientId=client_id or int(os.environ.get("IB_CLIENT_ID", "1")),
         readonly=readonly,
         timeout=10,
     )

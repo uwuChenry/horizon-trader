@@ -74,10 +74,14 @@ def rolling_sharpe(equity: pd.Series, window: int = 126) -> pd.Series:
 
 
 def equity_stats(equity: pd.Series, benchmark: pd.Series | None = None) -> dict[str, float]:
-    """Headline portfolio stats. Sharpe/Sortino use a 0% risk-free rate."""
+    """Headline portfolio stats. Sharpe/Sortino use a 0% risk-free rate.
+
+    Sortino uses the root mean squared shortfall below zero over *all* daily
+    observations (the lower partial second moment), without demeaning losses.
+    """
     r = returns(equity)
     years = max((equity.index[-1] - equity.index[0]).days / 365.25, 1e-9)
-    downside = r[r < 0].std()
+    downside = np.sqrt(r.clip(upper=0).pow(2).mean())
     dd = drawdown(equity)
     periods = drawdown_periods(equity, top=None)
     cagr = (equity.iloc[-1] / equity.iloc[0]) ** (1 / years) - 1

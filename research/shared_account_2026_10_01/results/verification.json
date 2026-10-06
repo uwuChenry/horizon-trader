@@ -1,0 +1,15 @@
+{
+  "verified_runs": 188,
+  "source_hashes": 1294,
+  "max_cash_identity_error": 2.3071322630130453e-11,
+  "max_nav_identity_error": 7.275957614183426e-12,
+  "checks": [
+    "cash changes = net trades + paid dividends - funding - short fees",
+    "integer orders",
+    "NAV independently reconstructed from net orders, splits, raw closes and receivables",
+    "positive finite NAV",
+    "per-order fee recomputation",
+    "source input/code hashes",
+    "all four requested capital sizes"
+  ]
+}

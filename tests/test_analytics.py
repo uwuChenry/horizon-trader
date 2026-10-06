@@ -57,6 +57,15 @@ def test_equity_stats_beta_against_itself_is_one():
     assert s["alpha/yr"] == pytest.approx(0.0, abs=1e-12)
 
 
+def test_sortino_uses_all_observations_and_does_not_demean_losses():
+    # Two identical losses still contribute downside risk; using their
+    # conditional standard deviation would incorrectly make it zero.
+    r = np.array([0.10, -0.05, -0.05, 0.10])
+    eq = _eq(100 * np.r_[1.0, np.cumprod(1 + r)])
+    expected = r.mean() / np.sqrt((0.05**2 + 0.05**2) / 4) * np.sqrt(252)
+    assert A.equity_stats(eq)["Sortino"] == pytest.approx(expected)
+
+
 def test_monthly_returns_compound_within_month():
     idx = pd.to_datetime(["2024-01-02", "2024-01-31", "2024-02-15", "2024-02-29"])
     eq = pd.Series([100.0, 110.0, 99.0, 121.0], index=idx)

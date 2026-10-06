@@ -1,0 +1,220 @@
+{
+  "command": ".venv/Scripts/python.exe research/cycle_2026_10_01/reproduce_legacy.py",
+  "requested_start": "2008-01-01",
+  "requested_end": "2026-09-30",
+  "actual_start": "2008-01-02",
+  "actual_end": "2026-09-30",
+  "config_path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\config\\settings.yaml",
+  "config_sha256": "86544ff293695d36c33d18750165e41352c1f5a11a6a4ead64dfc45d8569a56c",
+  "config_snapshot": {
+    "account": {
+      "starting_cash": 5000.0
+    },
+    "universe": [
+      "SPY",
+      "QQQ",
+      "IWM",
+      "EFA",
+      "EEM",
+      "VNQ",
+      "DBC",
+      "TLT",
+      "IEF",
+      "GLD"
+    ],
+    "sleeves": {
+      "position_momentum": {
+        "type": "momentum_rotation",
+        "allocation": 0.3,
+        "params": {
+          "lookback": 252,
+          "skip": 21,
+          "top_n": 3,
+          "trend_window": 200
+        }
+      },
+      "position_trend": {
+        "type": "trend_following",
+        "allocation": 0.25,
+        "params": {
+          "lookback": 252,
+          "vol_window": 63
+        }
+      },
+      "position_volmanaged": {
+        "type": "vol_managed",
+        "allocation": 0.2,
+        "params": {
+          "symbol": "SPY",
+          "window": 21,
+          "target_vol": 0.15,
+          "max_weight": 1.0
+        }
+      },
+      "swing_meanrev": {
+        "type": "mean_reversion",
+        "allocation": 0.15,
+        "params": {
+          "universe": [
+            "SPY",
+            "QQQ",
+            "IWM"
+          ],
+          "rsi_period": 2,
+          "entry": 10,
+          "exit": 70,
+          "trend_window": 200,
+          "max_positions": 3,
+          "max_hold": 10
+        }
+      }
+    },
+    "risk": {
+      "max_weight": 0.6,
+      "max_gross": 1.0
+    },
+    "execution": {
+      "min_trade_value": 25.0,
+      "rebalance_band": 0.02,
+      "share_decimals": 4
+    },
+    "costs": {
+      "plan": "tiered",
+      "slippage_bps": 5.0
+    },
+    "live": {
+      "strategy": "daily_book",
+      "max_order_value": 3500.0,
+      "max_orders_per_day": 20
+    }
+  },
+  "data": [
+    {
+      "symbol": "DBC",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\DBC.parquet",
+      "sha256": "a6e5531d6188a1b90e312a7da980041b8fa1a86d7fd73cdc7fc64660a9b9c8be",
+      "rows": 5195,
+      "start": "2006-02-06",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "EEM",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\EEM.parquet",
+      "sha256": "6c34a0dbd68631ce56ffd290cec9792d518c041c54152dd54191c5f7a3cbbe5f",
+      "rows": 5904,
+      "start": "2003-04-14",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "EFA",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\EFA.parquet",
+      "sha256": "9923eb75cdf17f1e60a9933bfc8e6f7fbfeeef0dffcbcb0af33fa7751fe26152",
+      "rows": 6310,
+      "start": "2001-08-27",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "GLD",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\GLD.parquet",
+      "sha256": "43c9d1bf6e0f2a8ef2e356b4bc4ef517a618bdedc2178976df6e302fe0869337",
+      "rows": 5500,
+      "start": "2004-11-18",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "IEF",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\IEF.parquet",
+      "sha256": "887200cf01e90d916f2e24a40b5cf9dc17b7119deaa586959f78cdd75321efa0",
+      "rows": 6082,
+      "start": "2002-07-30",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "IWM",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\IWM.parquet",
+      "sha256": "dfd5116f68886fb859bf71669ba502a9f19d59fffd5428f1af567a715a90a685",
+      "rows": 6625,
+      "start": "2000-05-26",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "QQQ",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\QQQ.parquet",
+      "sha256": "8671e95a814c487e0630af2a1863abce98ee949cb9e99dece444dd6f4f842742",
+      "rows": 6933,
+      "start": "1999-03-10",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "SPY",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\SPY.parquet",
+      "sha256": "7fbe03b758fe1b0f6e7f926948e84ac1e6ccf57de3d0684ab98d80377c993bb5",
+      "rows": 8475,
+      "start": "1993-01-29",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "TLT",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\TLT.parquet",
+      "sha256": "147eba6606062b5a55d478bab8705ae818e99e26204259b07fd761ae2595775a",
+      "rows": 6082,
+      "start": "2002-07-30",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    },
+    {
+      "symbol": "VNQ",
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\VNQ.parquet",
+      "sha256": "0301b474f2e8ee4603699106e4b92e1c6a9755b82f5f9e9a9a3ba58b9a70d68a",
+      "rows": 5536,
+      "start": "2004-09-29",
+      "end": "2026-09-30",
+      "duplicate_dates": 0,
+      "missing_open_from_start": 0,
+      "missing_close_from_start": 0,
+      "nonpositive_close": 0
+    }
+  ],
+  "notes": [
+    "Read-only cached data; no load_bars refresh or external requests.",
+    "Adjusted OHLC synthetic share accounting with dividend reinvestment approximation.",
+    "First date is starting cash; all strategies first eligible at next open.",
+    "Legacy engine charges no cash yield, financing or borrow costs.",
+    "Source hashes cover complete files even though end date limits evaluation."
+  ]
+}

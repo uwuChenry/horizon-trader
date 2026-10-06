@@ -1,0 +1,20 @@
+{
+  "sessions": 1240,
+  "matched_trades_per_strategy": 1001,
+  "ema_exits_analyzed": 1518,
+  "stop_recoveries_analyzed": 315,
+  "costs": "IBKR Tiered + assumed 1c entry/non-auction exit slippage",
+  "tests": "56 targeted tests passed",
+  "chart": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\orb_ema_2026_10_02\\exit_diagnostics.html",
+  "source_sha256": {
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\orb_ema_2026_10_02\\trades_5m.parquet": "2ac562fa7c95de6d48d97ddaa698ccc4fa5914004746029b811c5cf2b79ccbfb",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\orb_ema_2026_10_02\\trades_5m_exit15m.parquet": "e9d4692a7b26b9ea0fb66d244542f02c9504c289b1cdf3f629ce786771c74d61",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\orb_ema_2026_10_02\\inputs_3c4d1edd43a31ba3c71ae9c0ab747417771a013eacf86a8c394681f2d386fd57.parquet": "a1a5ad08f078984ad5c61473802bbdb4396917caf75d3ab9336acf10f75b8372",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\massive\\derived\\orb5_stop1_trades.parquet": "bb8faae28879ed8f31628a4d45dd0c6e5ed9adc657e35d7f691590c6d7d07896",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\src\\horizon_trader\\intraday\\orb_exit_diagnostics.py": "db318ab7b117d6d6d8943588ef7809c7421c5641348800c382cc186565053929",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\src\\horizon_trader\\intraday\\orb_ema.py": "5d08e88887705a14c26df8d5ba0d1488ed8f3ea3169df76a2e416a0ed5fecdb1",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\research\\orb_ema_2026_10_02\\exit_diagnostics\\analyze.py": "e3bd2610b7a967a7d5160de3833d7e1b608d0a1370a575e33453fdc1f2614770",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\research\\orb_ema_2026_10_02\\exit_diagnostics\\protocol.md": "0908b94e894c2015676d8239845b4ccf13d6dae241e58f270efa4845398d7570",
+    "tests\\test_orb_exit_diagnostics.py": "8f415cc170fdd0943d5127402e4a6f9960dbbe5ed7e2a51d815b7bd0f8f33c97"
+  }
+}

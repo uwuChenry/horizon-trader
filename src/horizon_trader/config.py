@@ -42,6 +42,14 @@ class CostSettings(BaseModel):
     slippage_bps: float = Field(5.0, ge=0.0)
 
 
+class LiveSettings(BaseModel):
+    """Guard rails for orders sent to IBKR (paper only until the owner approves live)."""
+
+    strategy: str = "daily_book"  # IBKR orderRef tag and ledger name
+    max_order_value: float = Field(3_500.0, gt=0.0)  # USD per order
+    max_orders_per_day: int = Field(20, gt=0)
+
+
 class Settings(BaseModel):
     account: AccountSettings = AccountSettings()
     universe: list[str]
@@ -49,6 +57,7 @@ class Settings(BaseModel):
     risk: RiskSettings = RiskSettings()
     execution: ExecutionSettings = ExecutionSettings()
     costs: CostSettings = CostSettings()
+    live: LiveSettings = LiveSettings()
 
     @model_validator(mode="after")
     def _allocations_fit(self) -> Settings:

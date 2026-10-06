@@ -69,6 +69,40 @@ def test_costs_reduce_equity():
     assert paid.trades["commission"].sum() > 0
 
 
+@pytest.mark.parametrize("missing", [float("nan"), 0.0, float("inf")])
+def test_missing_open_never_fills_at_a_stale_close(missing):
+    closes = _panel([100.0, 110.0, 120.0])
+    opens = _panel([100.0, missing, 120.0])
+    targets = _panel([1.0, 1.0, 1.0])
+    result = simulate(targets, opens, closes, 1_000.0, ExecutionSettings(), ZERO_COSTS)
+    assert result.trades["date"].tolist() == [closes.index[2]]
+    assert result.trades["price"].tolist() == [120.0]
+    assert result.equity.tolist() == pytest.approx([1_000.0, 1_000.0, 1_000.0])
+
+
+def test_missing_open_freezes_held_position_until_a_quote_returns():
+    closes = _panel([100.0, 100.0, 110.0, 90.0])
+    opens = _panel([100.0, 100.0, float("nan"), 90.0])
+    targets = _panel([1.0, 0.0, 0.0, 0.0])
+    result = simulate(targets, opens, closes, 1_000.0, ExecutionSettings(), ZERO_COSTS)
+    assert result.trades["date"].tolist() == [closes.index[1], closes.index[3]]
+    assert result.trades["quantity"].tolist() == [10.0, -10.0]
+    assert result.equity.tolist() == pytest.approx([1_000.0, 1_000.0, 1_100.0, 900.0])
+
+
+def test_missing_open_uses_prior_mark_to_size_other_symbols():
+    closes = _panel([100.0, 100.0, 500.0])
+    closes["QQQ"] = 100.0
+    opens = closes.copy()
+    opens.loc[closes.index[2], "SPY"] = float("nan")
+    targets = pd.DataFrame({"SPY": [0.5, 0.5, 0.5], "QQQ": [0.0, 0.5, 0.5]}, index=closes.index)
+    result = simulate(targets, opens, closes, 1_000.0, ExecutionSettings(), ZERO_COSTS)
+    # Missing-open SPY is worth the last known $500 at this open, not $2,500
+    # based on today's as-yet-unknown close; QQQ therefore receives $500.
+    assert result.trades["symbol"].tolist() == ["SPY", "QQQ"]
+    assert result.trades["quantity"].tolist() == [5.0, 5.0]
+
+
 def test_metrics():
     eq = pd.Series([100.0, 120.0, 90.0, 130.0], index=pd.bdate_range("2021-01-04", periods=4))
     assert max_drawdown(eq) == pytest.approx(-0.25)

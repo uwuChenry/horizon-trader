@@ -1,0 +1,12 @@
+year,training_end,selected,fallback,ranking_metric
+2016,2015-12-31,rotation_126,False,cagr
+2017,2016-12-31,rotation_126,False,cagr
+2018,2017-12-31,voltrend_25,False,cagr
+2019,2018-12-31,voltrend_25,False,cagr
+2020,2019-12-31,voltrend_25,False,cagr
+2021,2020-12-31,voltrend_25,False,cagr
+2022,2021-12-31,voltrend_25,False,cagr
+2023,2022-12-31,voltrend_25,False,cagr
+2024,2023-12-31,voltrend_25,False,cagr
+2025,2024-12-31,voltrend_25,False,cagr
+2026,2025-12-31,voltrend_25,False,cagr

@@ -1,0 +1,232 @@
+{
+  "command": ".venv/Scripts/python.exe research/portfolio_data_review_2026_10_01/analyze_portfolio.py",
+  "scope": "Descriptive screening; synthetic return blends, not capital/margin/fill replay",
+  "initial_nav": "2021-11-01",
+  "first_return": "2021-11-02",
+  "end": "2026-09-24",
+  "selection": "Representative existing baseline sleeves, no parameter or blend search",
+  "training_end": "2023-12-31",
+  "test_start": "2024-01-01",
+  "risk_weights": {
+    "daily_core_fixed": 0.515977585263584,
+    "orb_fixed": 0.20332137002741696,
+    "qqq_noise_fixed": 0.2807010447089991
+  },
+  "orb_saved_curve_replay_max_error": 0.0,
+  "cash_convention": "Zero cash income in source returns. Portfolio excess = sum(scaled raw source returns) minus ONE DFF hurdle; no rf added per intraday sleeve.",
+  "cost_convention": "Primary replays Fixed $5k; historical Tiered outputs isolated. Scaling already-net returns does not reprice fee minima or whole shares at portfolio equity.",
+  "sources": [
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-163616_blend-daily-book-only-reference\\equity.parquet",
+      "sha256": "6560b4a7d2b447c3e227e2eeec88375200deefc8c8f14e05e23ab5ee22ce0659"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-163616_blend-daily-book-only-reference\\meta.json",
+      "sha256": "f19cc73d00a2ac2d03bcf710baf23e421e410a9192b8f00d3366737bb0fe2b59"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-163616_blend-orb-only\\equity.parquet",
+      "sha256": "0a07a3578f1f0acb8b4af7b5e78df125501aea21c2d1ea34c9a6562298e97803"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-163616_blend-orb-only\\meta.json",
+      "sha256": "10b8ea3622d80acb49240943bfed22fbd729711ba4bc01dc1849ef7abf0acfcc"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-163616_blend-qqq-noise-only\\equity.parquet",
+      "sha256": "e6f64e4cb5bcf1c0d7d572ba554bbba88183d1d096b254d32241222aaf153c65"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-163616_blend-qqq-noise-only\\meta.json",
+      "sha256": "a469f2038a8e05d7d1ae49f2c59b3f7fdfc469ff8c5c2632a63a1ce77c90df19"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-031640_orb-top1-1atr-stop-limit-0c-5k-fixed\\equity.parquet",
+      "sha256": "558d399e4ccff638985a94e998462c330920d884fb7aba7e312be605f8a6b8db"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-031640_orb-top1-1atr-stop-limit-0c-5k-fixed\\meta.json",
+      "sha256": "341afc6d8f84591381bb7f316ded78e3cdc2db3162ec7f1802322eea6e55eda4"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260926-040915_winners-momentum-12-1-top-10-5k-net\\equity.parquet",
+      "sha256": "5b83e0abf092f2abae8bb938dcd0d5f360cb57d7887a2bec30e26b7d0f041a95"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260926-040915_winners-momentum-12-1-top-10-5k-net\\meta.json",
+      "sha256": "ba886124f3f6a42049a9fff9689e14ae7ea5b5b5b393b68f7d8725f8c3061c9b"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\results\\20260925-031640_orb-top1-1atr-stop-limit-0c-5k-fixed\\trades.parquet",
+      "sha256": "ba547275c2791526be7bfb276c5939ef820b27a9092c8bd69865d45a7c20770c"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\SPY.parquet",
+      "sha256": "7fbe03b758fe1b0f6e7f926948e84ac1e6ccf57de3d0684ab98d80377c993bb5"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\QQQ.parquet",
+      "sha256": "8671e95a814c487e0630af2a1863abce98ee949cb9e99dece444dd6f4f842742"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\IWM.parquet",
+      "sha256": "dfd5116f68886fb859bf71669ba502a9f19d59fffd5428f1af567a715a90a685"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\EFA.parquet",
+      "sha256": "9923eb75cdf17f1e60a9933bfc8e6f7fbfeeef0dffcbcb0af33fa7751fe26152"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\EEM.parquet",
+      "sha256": "6c34a0dbd68631ce56ffd290cec9792d518c041c54152dd54191c5f7a3cbbe5f"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\VNQ.parquet",
+      "sha256": "0301b474f2e8ee4603699106e4b92e1c6a9755b82f5f9e9a9a3ba58b9a70d68a"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\DBC.parquet",
+      "sha256": "a6e5531d6188a1b90e312a7da980041b8fa1a86d7fd73cdc7fc64660a9b9c8be"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\TLT.parquet",
+      "sha256": "147eba6606062b5a55d478bab8705ae818e99e26204259b07fd761ae2595775a"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\IEF.parquet",
+      "sha256": "887200cf01e90d916f2e24a40b5cf9dc17b7119deaa586959f78cdd75321efa0"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\bars\\GLD.parquet",
+      "sha256": "43c9d1bf6e0f2a8ef2e356b4bc4ef517a618bdedc2178976df6e302fe0869337"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\massive\\derived\\minute_QQQ.parquet",
+      "sha256": "23a4b43fc924a991ae1d0b5c6bfeb59159b7e52934e25913efae7f4f2af5aa27"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\massive\\derived\\day_QQQ.parquet",
+      "sha256": "9aa23cc73d92655615c01d21eab7c1275b5cf786df21fce644887f1b833dd5e8"
+    },
+    {
+      "path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\research_cycle_2026_10_01\\inputs\\dff.parquet",
+      "sha256": "c671544d18b4f9301454047f89dcd53f0f0bd99693f27ad1fd73eb79c07df737"
+    }
+  ],
+  "daily_settings_snapshot": {
+    "account": {
+      "starting_cash": 5000.0
+    },
+    "universe": [
+      "SPY",
+      "QQQ",
+      "IWM",
+      "EFA",
+      "EEM",
+      "VNQ",
+      "DBC",
+      "TLT",
+      "IEF",
+      "GLD"
+    ],
+    "sleeves": {
+      "position_momentum": {
+        "type": "momentum_rotation",
+        "allocation": 0.3,
+        "params": {
+          "lookback": 252,
+          "skip": 21,
+          "top_n": 3,
+          "trend_window": 200
+        }
+      },
+      "position_trend": {
+        "type": "trend_following",
+        "allocation": 0.25,
+        "params": {
+          "lookback": 252,
+          "vol_window": 63
+        }
+      },
+      "position_volmanaged": {
+        "type": "vol_managed",
+        "allocation": 0.2,
+        "params": {
+          "symbol": "SPY",
+          "window": 21,
+          "target_vol": 0.15,
+          "max_weight": 1.0
+        }
+      },
+      "swing_meanrev": {
+        "type": "mean_reversion",
+        "allocation": 0.15,
+        "params": {
+          "universe": [
+            "SPY",
+            "QQQ",
+            "IWM"
+          ],
+          "rsi_period": 2,
+          "entry": 10,
+          "exit": 70,
+          "trend_window": 200,
+          "max_positions": 3,
+          "max_hold": 10
+        }
+      }
+    },
+    "risk": {
+      "max_weight": 0.6,
+      "max_gross": 1.0
+    },
+    "execution": {
+      "min_trade_value": 25.0,
+      "rebalance_band": 0.02,
+      "share_decimals": 4
+    },
+    "costs": {
+      "plan": "fixed",
+      "slippage_bps": 5.0
+    }
+  },
+  "loaded_config_path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\research\\portfolio_data_review_2026_10_01\\results\\effective_daily_settings.json",
+  "loaded_config_sha256": "c3a517e37477024a2d04f4d963b8b4f96407e80b326b1acc1a43bef8b468e434",
+  "effective_config_path": "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\research\\portfolio_data_review_2026_10_01\\results\\effective_daily_settings.json",
+  "effective_config_sha256": "c3a517e37477024a2d04f4d963b8b4f96407e80b326b1acc1a43bef8b468e434",
+  "metric_conventions": {
+    "sharpe": "Mean daily excess / sample standard deviation of excess * sqrt(252)",
+    "sortino": "Mean daily excess / RMS(min(daily excess,0)) * sqrt(252), all sessions",
+    "cagr": "Compounded endpoint wealth using actual elapsed calendar days /365.25"
+  },
+  "screened_blends": [
+    "equal_risk_frozen",
+    "daily_plus_orb",
+    "daily_plus_noise",
+    "daily_plus_both",
+    "reduced_overlay",
+    "reduced_overlay_cost_stress",
+    "delete_daily_core_fixed_cash",
+    "delete_orb_fixed_cash",
+    "delete_qqq_noise_fixed_cash"
+  ],
+  "prior_research": "Entire historical sample was used in earlier repository research; no untouched test.",
+  "source_code_sha256": "ed15f4b5f2f32a3b5680b57d2bf445f9919b9861aa292519bb261cf421a8958f",
+  "code_hashes": {
+    "research\\portfolio_data_review_2026_10_01\\analyze_portfolio.py": "ed15f4b5f2f32a3b5680b57d2bf445f9919b9861aa292519bb261cf421a8958f",
+    "src\\horizon_trader\\backtest\\research_stats.py": "49dee125af5d83da226b330405670b8df781901dac94e2c158aff6cfbd2f7e5c",
+    "src\\horizon_trader\\backtest\\run.py": "18c550ca2fdaf4410609a3324c47eb1640f0611ae39b7822c3069b1aa6b85aac",
+    "src\\horizon_trader\\backtest\\sim.py": "ff5e466a4e8ac2264865d709de44c36563101f1ecf3796fb2bdfeaf31467f265",
+    "src\\horizon_trader\\execution\\costs.py": "448525ef49c3fec6953ca31927e9d4d01390397719e80f14900fb96b46743cb7",
+    "src\\horizon_trader\\execution\\paper_sim.py": "736964adf9dd82da37504573a3141402403cd2bae28c2c8cd5cfd0574005da90",
+    "src\\horizon_trader\\execution\\rebalance.py": "5a539a5b9b1abd79e3c93f8bb9d0bbdf5ad6f70c51c15e2301c5af20f379598a",
+    "src\\horizon_trader\\intraday\\market_momentum.py": "f85dbf629e7e157544a93c3456cba0ba5a91641d76a3df221717b1d1091661fa",
+    "src\\horizon_trader\\sleeves\\momentum.py": "7682039c16200a77aa51718fc68426cc41113e846e2cae83ec820b9446d20f97",
+    "src\\horizon_trader\\sleeves\\trend.py": "b2fd0e8ce45553bb1a69a35c9686bca2092a61ecff1fd04e8657e4a742c8f052",
+    "src\\horizon_trader\\sleeves\\vol_managed.py": "acabbe633ce82f49b27c3140309c5670a01fbdd71f4e68ede86d8cad7299242c",
+    "src\\horizon_trader\\sleeves\\mean_reversion.py": "62272f65f25bb0004a45879988e8e268d4e3dfee4c34e86de0a742e5b599450e",
+    "src\\horizon_trader\\sleeves\\risk_parity.py": "7b2e164205fa8fa6109998519a50157f5eb61abe2ee501451c27594365f8efda",
+    "src\\horizon_trader\\portfolio\\risk.py": "6e850fde344b48b088530ff6923ca170418609ffa1e696d9fd5570a6422916a9",
+    "src\\horizon_trader\\portfolio\\combine.py": "58af6087e5f510255de659eac800c1b0e3189e4ec289320b78a5a15abeac3a66"
+  }
+}

@@ -258,6 +258,33 @@ def _simulate_job(job: tuple[date, pd.DataFrame, OrbRules]) -> pd.DataFrame:
     return simulate_day(session, cands, d, rules)
 
 
+def feature_panels(
+    rules: OrbRules, days: list[date], day_days: list[date], rebuild=False, n_workers=None
+) -> dict[str, pd.DataFrame]:
+    """Date x ticker panels for every common stock: the daily features (open, atr,
+    avg_volume, prev_close, ...), the opening range (OR_COLS) and relvol."""
+    common = massive_ref.load_common_tickers()
+    panels = F.load_daily_panels(day_days, common)
+    splits = massive_ref.load_splits()
+    factor = F.split_factors(panels["open"].index, panels["open"].columns, splits)
+    feats = F.daily_features(panels, factor, rules.lookback)
+    ors = opening_ranges(days, common, rules.minutes, rebuild, n_workers)
+    wide = {c: ors.pivot(index="date", columns="ticker", values=c) for c in OR_COLS}
+    idx = pd.DatetimeIndex([pd.Timestamp(d) for d in days])
+    traded = panels["volume"].reindex(idx).fillna(0) > 0
+    relvol = F.relative_volume(wide["or_volume"], factor.reindex(idx), traded, rules.lookback)
+    return feats | wide | {"relvol": relvol}
+
+
+def day_frame(panels: dict[str, pd.DataFrame], t: pd.Timestamp) -> pd.DataFrame:
+    """One day's rows (ticker index) of `feature_panels`, for `select_candidates`."""
+    feats = {k: v.loc[t] for k, v in panels.items() if k not in OR_COLS and k != "relvol"}
+    day = pd.DataFrame(feats)
+    day = day.join(pd.DataFrame({k: panels[k].loc[t] for k in OR_COLS}), how="inner")
+    day["relvol"] = panels["relvol"].loc[t]
+    return day
+
+
 def build_trades(rules: OrbRules = RULES, rebuild: bool = False, n_workers=None) -> pd.DataFrame:
     """Candidates and simulated trades for every day with minute data (cached).
 
@@ -276,24 +303,10 @@ def build_trades(rules: OrbRules = RULES, rebuild: bool = False, n_workers=None)
     if not todo:
         return cached.sort_values(["date", "rank"], ignore_index=True)
 
-    common = massive_ref.load_common_tickers()
-    panels = F.load_daily_panels(day_days, common)
-    splits = massive_ref.load_splits()
-    factor = F.split_factors(panels["open"].index, panels["open"].columns, splits)
-    feats = F.daily_features(panels, factor, rules.lookback)
-    ors = opening_ranges(days, common, rules.minutes, rebuild, n_workers)
-    wide = {c: ors.pivot(index="date", columns="ticker", values=c) for c in OR_COLS}
-    idx = pd.DatetimeIndex([pd.Timestamp(d) for d in days])
-    traded = panels["volume"].reindex(idx).fillna(0) > 0
-    relvol = F.relative_volume(wide["or_volume"], factor.reindex(idx), traded, rules.lookback)
-
+    panels = feature_panels(rules, days, day_days, rebuild, n_workers)
     jobs = []
     for d in todo:  # candidate selection is cheap but needs the big panels: do it here
-        t = pd.Timestamp(d)
-        day = pd.DataFrame({k: v.loc[t] for k, v in feats.items()})
-        day = day.join(pd.DataFrame({k: v.loc[t] for k, v in wide.items()}), how="inner")
-        day["relvol"] = relvol.loc[t]
-        cands = select_candidates(day, rules)
+        cands = select_candidates(day_frame(panels, pd.Timestamp(d)), rules)
         if not cands.empty:
             jobs.append((d, cands, rules))
     new = _parallel(_simulate_job, jobs, n_workers, "simulated")

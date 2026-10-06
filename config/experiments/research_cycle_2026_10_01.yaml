@@ -1,0 +1,42 @@
+# Frozen before candidate runs. Research only; never read by the live runner.
+cycle: research_cycle_2026_10_01
+symbols: [QQQ, GLD, IEF]
+initial_nav_date: '2006-12-29'
+end: '2026-09-30'
+development_end: '2015-12-31'
+validation_end: '2020-12-31'
+starting_cash: 5000
+cost_plan: fixed
+slippage_bps: 5.0
+borrow_spread: 0.015
+share_mode: whole
+cash_interest: zero
+relative_drawdown_reduction: 0.10
+seed: 20261001
+bootstrap_samples: 2000
+bootstrap_block_days: 63
+variants:
+  - {name: trend_100, family: trend, trend: 100}
+  - {name: trend_200, family: trend, trend: 200, central: true}
+  - {name: trend_300, family: trend, trend: 300}
+  - {name: voltrend_15, family: voltrend, trend: 200, vol_window: 63, target_vol: 0.15, cap: 1.5}
+  - {name: voltrend_20, family: voltrend, trend: 200, vol_window: 63, target_vol: 0.20, cap: 1.5, central: true}
+  - {name: voltrend_25, family: voltrend, trend: 200, vol_window: 63, target_vol: 0.25, cap: 1.5}
+  - {name: rotation_126, family: rotation, trend: 200, lookback: 126, skip: 21}
+  - {name: rotation_189, family: rotation, trend: 200, lookback: 189, skip: 21}
+  - {name: rotation_252, family: rotation, trend: 200, lookback: 252, skip: 21, central: true}
+controls:
+  - {name: qqq_buy_hold, family: buy_hold, weight: 1.0}
+  - {name: qqq_125, family: static, weight: 1.25}
+  - {name: qqq_vol_only, family: vol_only, vol_window: 63, target_vol: 0.20, cap: 1.5}
+  - {name: equal_weight, family: equal_weight}
+stress:
+  - {name: tiered_5bps, plan: tiered, slippage_bps: 5.0}
+  - {name: fixed_10bps, plan: fixed, slippage_bps: 10.0}
+  - {name: fixed_20bps, plan: fixed, slippage_bps: 20.0}
+  - {name: delay_2, delay: 2}
+  - {name: delay_5, delay: 5}
+  - {name: funding_plus_200bps, borrow_spread: 0.035}
+  - {name: fractional, whole_shares: false}
+  - {name: broker_cash_interest, cash_rate_mode: broker}
+  - {name: joint_adverse, plan: fixed, slippage_bps: 20.0, delay: 2, borrow_spread: 0.035}

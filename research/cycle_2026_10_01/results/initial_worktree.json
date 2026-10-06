@@ -1,0 +1,28 @@
+{
+  "source": "git status --short captured at the start of this cycle, before edits",
+  "preexisting_modified": [
+    "CLAUDE.md",
+    "config/settings.yaml",
+    "research/orb_experiments.md",
+    "src/horizon_trader/config.py",
+    "src/horizon_trader/execution/ibkr.py",
+    "src/horizon_trader/intraday/orb.py",
+    "src/horizon_trader/run_daily.py",
+    "tests/test_run_daily.py"
+  ],
+  "preexisting_untracked": [
+    "config/experiments/whole_shares.yaml",
+    "deploy/windows/",
+    "research/roadmap.md",
+    "src/horizon_trader/execution/ibkr_broker.py",
+    "src/horizon_trader/execution/ledger.py",
+    "src/horizon_trader/intraday/orb_live.py",
+    "src/horizon_trader/intraday/orb_shortlist.py",
+    "src/horizon_trader/intraday/orb_windows.py",
+    "src/horizon_trader/intraday/scanner_log.py",
+    "tests/test_live.py",
+    "tests/test_orb_live.py",
+    "tests/test_orb_shortlist.py"
+  ],
+  "policy": "Preserved; no live settings, deployment, broker or preexisting research edits"
+}

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 from horizon_trader.config import ExecutionSettings
@@ -33,8 +34,11 @@ def simulate(
     costs: CostModel,
 ) -> BacktestResult:
     closes = closes.ffill()
-    # Trade at the open; fall back to the prior close if a symbol has no open that day.
-    trade_px = opens.reindex_like(closes).fillna(closes.shift(1))
+    # A stale close is a valuation mark, never an executable open. Freeze holdings
+    # without a valid open until that symbol has a quote again.
+    trade_px = opens.reindex_like(closes)
+    trade_px = trade_px.where((trade_px > 0) & np.isfinite(trade_px))
+    mark_px = trade_px.fillna(closes.shift(1))
     targets = targets.reindex(index=closes.index).fillna(0.0)
 
     broker = PaperBroker(cash=starting_cash, costs=costs)
@@ -43,9 +47,11 @@ def simulate(
     for i, day in enumerate(closes.index):
         if i > 0:
             px = _row_prices(trade_px.iloc[i])
+            marks = _row_prices(mark_px.iloc[i])
             wanted = targets.iloc[i - 1]
             wanted = wanted[(wanted != 0) & wanted.index.isin(list(px))]
-            orders = compute_orders(wanted, broker.positions(), px, broker.equity(px), execution)
+            tradable = {s: q for s, q in broker.positions().items() if s in px}
+            orders = compute_orders(wanted, tradable, px, broker.equity(marks), execution)
             for order in orders:
                 fill = broker.submit(order, px[order.symbol])
                 trades.append((day, order.symbol, order.quantity, fill.price, fill.commission))

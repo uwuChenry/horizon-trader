@@ -1,0 +1,17 @@
+{
+  "sessions": 1240,
+  "saved_round_trips": 21970,
+  "metric_rows": 180,
+  "matched_original_baseline_trades": 1001,
+  "baseline_price_disagreements": 0,
+  "matched_ema_exit_entries": 1001,
+  "tests": "37 passed: test_orb_ema.py, test_orb.py, test_ema_vwap.py",
+  "dependency_sha256": {
+    "src/horizon_trader/intraday/orb_ema.py": "5a9c2bfe0b3501556b5777eab838135e93e39d84b45bf48abb91334b5b1a7097",
+    "src/horizon_trader/intraday/orb.py": "a0208157286faa7033de163b02187dd0370983704de4b0ebc9fbc93557b7d45d",
+    "src/horizon_trader/intraday/features.py": "c49e2e087f5d117f851b1937c392ab03eeb6b527e56ce4d3fd34166267a94de2",
+    "src/horizon_trader/execution/costs.py": "448525ef49c3fec6953ca31927e9d4d01390397719e80f14900fb96b46743cb7",
+    "src/horizon_trader/backtest/metrics.py": "16338cc18745f1cc69dfb4287953b8147fa5bbb079a92e5d793260b7c8276d8f",
+    "tests/test_orb_ema.py": "9e13e5639e91cf41429d1e40ebe835c866778be8c71b824786ea80ac37cd9f45"
+  }
+}

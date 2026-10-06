@@ -1,0 +1,4 @@
+exit_rule,wide_winners,wide_winners_killed_by_narrow_stop,wide_winners_killed_fraction,wide_winners_same_exit,killed_winners_in_entry_minute,trades_excluding_narrow_entry_minute_stops,mean_delta_excluding_narrow_entry_minute_stops,mean_narrow_minus_wide_net_in_wide_R
+ema1,417,78,0.18705035971223022,339,28,907,-0.018804764887170866,-0.055628219093484185
+ema2,422,87,0.20616113744075829,335,28,907,-0.02506740205308579,-0.0684710794877721
+hold,450,116,0.2577777777777778,334,28,907,-0.01924122020155273,-0.08799631511132423

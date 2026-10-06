@@ -1,0 +1,14 @@
+{
+  "event_counts": {
+    "api_error": 10,
+    "account": 7,
+    "start": 3,
+    "connection_failed": 2,
+    "connected": 1,
+    "subscriptions": 1,
+    "heartbeat": 1,
+    "end": 1
+  },
+  "valid_two_sided_live_type_rows": 0,
+  "note": "Counts include repeated observations, not unique fills; current-day snapshots only"
+}

@@ -61,3 +61,8 @@ execution:
   min_trade_value: 25     # skip dust trades (USD)
   rebalance_band: 0.02    # only resize a position once it drifts >2% of equity from target
   share_decimals: 4       # IBKR fractional shares
+
+live:                     # run_daily --mode paper / what-if (IBKR paper account only)
+  strategy: daily_book    # orderRef tag on every IBKR order; ledger in data/live/daily_book
+  max_order_value: 3500   # refuse any single order above this (USD); max_weight 0.6 x $5k = $3k
+  max_orders_per_day: 20

@@ -1,0 +1,64 @@
+{
+  "frozen_utc": "2026-10-01T08:21:29.688940+00:00",
+  "common_end": "2026-09-30",
+  "symbols": [
+    {
+      "ticker": "QQQ",
+      "file": "data\\research_cycle_2026_10_01\\inputs\\QQQ.parquet",
+      "sha256": "01d841c25844998263036a4e6becf350aa2f8d109524063b7d14e422ad85f6b1",
+      "rows": 6933,
+      "start": "1999-03-10",
+      "end": "2026-09-30",
+      "adjusted_source": "data\\bars\\QQQ.parquet",
+      "adjusted_source_sha256": "8671e95a814c487e0630af2a1863abce98ee949cb9e99dece444dd6f4f842742",
+      "raw_source": "data\\research_cycle_2026_10_01\\raw\\QQQ.parquet",
+      "raw_source_sha256": "0576ccc81d66513e18fe2b3f88507292b122c84f1b35f70108b8dc432655c10b",
+      "missing_values": 0,
+      "nominal_price_method": "Yahoo Open times strictly subsequent split product"
+    },
+    {
+      "ticker": "GLD",
+      "file": "data\\research_cycle_2026_10_01\\inputs\\GLD.parquet",
+      "sha256": "03173d18627dfa91bf8b99800c1364dcfa22bf2bfd2546d18b970432956c462c",
+      "rows": 5500,
+      "start": "2004-11-18",
+      "end": "2026-09-30",
+      "adjusted_source": "data\\bars\\GLD.parquet",
+      "adjusted_source_sha256": "43c9d1bf6e0f2a8ef2e356b4bc4ef517a618bdedc2178976df6e302fe0869337",
+      "raw_source": "data\\research_cycle_2026_10_01\\raw\\GLD.parquet",
+      "raw_source_sha256": "15a14c2405f51b763282498847558dcb2fa671d88e34155044294651675d447f",
+      "missing_values": 0,
+      "nominal_price_method": "Yahoo Open times strictly subsequent split product"
+    },
+    {
+      "ticker": "IEF",
+      "file": "data\\research_cycle_2026_10_01\\inputs\\IEF.parquet",
+      "sha256": "2de94cfb5d9e134307bc96fd9ae3ff4cc2a54ffca684524b3b810084eb8f54f9",
+      "rows": 6082,
+      "start": "2002-07-30",
+      "end": "2026-09-30",
+      "adjusted_source": "data\\bars\\IEF.parquet",
+      "adjusted_source_sha256": "887200cf01e90d916f2e24a40b5cf9dc17b7119deaa586959f78cdd75321efa0",
+      "raw_source": "data\\research_cycle_2026_10_01\\raw\\IEF.parquet",
+      "raw_source_sha256": "25996111090e2379e40307628940b81ff6e4e041c5c09f5fa2c8c37b9d506074",
+      "missing_values": 0,
+      "nominal_price_method": "Yahoo Open times strictly subsequent split product"
+    }
+  ],
+  "funding": {
+    "file": "data\\research_cycle_2026_10_01\\inputs\\dff.parquet",
+    "sha256": "c671544d18b4f9301454047f89dcd53f0f0bd99693f27ad1fd73eb79c07df737",
+    "source_sha256": "c671544d18b4f9301454047f89dcd53f0f0bd99693f27ad1fd73eb79c07df737",
+    "rows": 26384,
+    "start": "1954-07-01",
+    "end": "2026-09-24",
+    "column": "ff",
+    "units": "annual rate fraction",
+    "tail_assumption": "Forward-fill 2026-09-24 rate through 2026-09-30; do not interpolate"
+  },
+  "price_conventions": {
+    "signals_returns": "Frozen existing split/dividend-adjusted Yahoo OHLC",
+    "shares_fees": "Separately retrieved nominal contemporaneous share prices",
+    "dividend_tax": "Gross total return; withholding excluded consistently for benchmark and candidates"
+  }
+}

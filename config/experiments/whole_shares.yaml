@@ -1,0 +1,70 @@
+# EXPERIMENT (2026-10-01): whole shares only. IBKR rejects fractional-size orders through the
+# API (error 10243), so this is what run_daily --mode paper can actually trade. Not the live config.
+# Allocations are fractions of account equity; they must sum to <= 1.0 (the rest stays in cash).
+# Each sleeve returns weights of *its own* capital; the portfolio layer scales and nets them.
+
+account:
+  starting_cash: 5000
+
+# Liquid ETFs across US/intl/EM equity, REITs, commodities, treasuries, gold.
+universe: [SPY, QQQ, IWM, EFA, EEM, VNQ, DBC, TLT, IEF, GLD]
+
+# Allocations were set a priori (not optimized on backtest results): the three
+# position-horizon sleeves carry most of the risk; the weaker, costlier swing sleeve gets less.
+sleeves:
+  position_momentum:        # weeks-months: monthly cross-asset momentum rotation
+    type: momentum_rotation
+    allocation: 0.3
+    params:
+      lookback: 252         # 12 months...
+      skip: 21              # ...minus the most recent month
+      top_n: 3
+      trend_window: 200
+
+  position_trend:           # weeks-months: time-series momentum, inverse-vol sized
+    type: trend_following
+    allocation: 0.25
+    params:
+      lookback: 252
+      vol_window: 63
+
+  position_volmanaged:      # weeks-months: SPY scaled by inverse realized variance
+    type: vol_managed
+    allocation: 0.2
+    params:
+      symbol: SPY
+      window: 21
+      target_vol: 0.15
+      max_weight: 1.0
+
+  swing_meanrev:            # days: RSI(2) dip-buying in uptrends
+    type: mean_reversion
+    allocation: 0.15
+    params:
+      universe: [SPY, QQQ, IWM]
+      rsi_period: 2
+      entry: 10
+      exit: 70
+      trend_window: 200
+      max_positions: 3
+      max_hold: 10
+
+  # remaining 10% reserved for the LLM sleeve (phase 5)
+
+risk:
+  max_weight: 0.6   # per-ticker cap after netting
+  max_gross: 1.0    # no leverage
+
+costs:
+  plan: tiered        # IBKR Pro: tiered ($0.35 min + fees; cheaper for small orders) or fixed ($1 min/order)
+  slippage_bps: 5
+
+execution:
+  min_trade_value: 25     # skip dust trades (USD)
+  rebalance_band: 0.02    # only resize a position once it drifts >2% of equity from target
+  share_decimals: 0       # whole shares: IBKR API refuses fractional orders
+
+live:                     # run_daily --mode paper / what-if (IBKR paper account only)
+  strategy: daily_book    # orderRef tag on every IBKR order; ledger in data/live/daily_book
+  max_order_value: 3500   # refuse any single order above this (USD); max_weight 0.6 x $5k = $3k
+  max_orders_per_day: 20

@@ -1,0 +1,10 @@
+{
+  "locked_development_replay": "bit-exact daily account reproduction",
+  "daily_accounts_verified": 64,
+  "account_checks": "finite positive NAV; dates; cash+holdings identity; no margin flag",
+  "trade_checks": "all signal dates precede fills; nonnegative fees and slippage",
+  "comparison_checks": "identical dates and sessions per period; all nine variants retained",
+  "unit_tests": "393 full-suite tests passed; 3 subsequently added statistics tests passed",
+  "lint": "all changed and new research code/tests passed Ruff",
+  "issues": []
+}

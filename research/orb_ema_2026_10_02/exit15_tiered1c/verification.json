@@ -1,0 +1,21 @@
+{
+  "sessions": 1240,
+  "comparison_rows": 240,
+  "matched_entries_all_stops": 21970,
+  "unchanged_baseline_trades_all_stops": 5005,
+  "entry_price_or_time_disagreements": 0,
+  "audited_delayed_ema_exit_events": 14,
+  "entry_rules": "5-minute; all entry times/prices match the original run",
+  "exit_rules": "15-minute EMA(12); completed candles, next available minute open",
+  "tests": "48 passed: test_orb_ema.py, test_orb.py, test_ema_vwap.py",
+  "sha256": {
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\src\\horizon_trader\\intraday\\orb_ema.py": "5d08e88887705a14c26df8d5ba0d1488ed8f3ea3169df76a2e416a0ed5fecdb1",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\src\\horizon_trader\\intraday\\orb.py": "a0208157286faa7033de163b02187dd0370983704de4b0ebc9fbc93557b7d45d",
+    "src\\horizon_trader\\execution\\costs.py": "448525ef49c3fec6953ca31927e9d4d01390397719e80f14900fb96b46743cb7",
+    "src\\horizon_trader\\backtest\\metrics.py": "16338cc18745f1cc69dfb4287953b8147fa5bbb079a92e5d793260b7c8276d8f",
+    "tests\\test_orb_ema.py": "ea29244566aa74f535afd93fc897380729713098fd9b2f743198b1839bd07fb9",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\research\\orb_ema_2026_10_02\\exit15_tiered1c\\compare.py": "46ac860fd82c4854b351598311d0e251130b883c9cf20f504454d4b61a60c34d",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\orb_ema_2026_10_02\\trades_5m.parquet": "2ac562fa7c95de6d48d97ddaa698ccc4fa5914004746029b811c5cf2b79ccbfb",
+    "C:\\Users\\henry\\Documents\\GitHub\\horizon-trader\\data\\orb_ema_2026_10_02\\trades_5m_exit15m.parquet": "e9d4692a7b26b9ea0fb66d244542f02c9504c289b1cdf3f629ce786771c74d61"
+  }
+}

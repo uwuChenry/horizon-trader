@@ -238,6 +238,77 @@ Family verdicts: **all fail** (a family needs two passing settings including the
   is much worse. That's consistent with Lundström (2017), but it didn't beat the baseline in
   2024–26, so it fails.
 
+## Experiment 11: finding the pick live without a full-market feed (`orb_shortlist.py`, 2026-10-01)
+
+The backtest ranks every US common stock by first-5-minute relative volume. Live, IBKR streams
+about 100 symbols at once, and the owner decided Massive's real-time plan isn't worth its price.
+So the daily pick has to come from a shortlist known in time, with the exact ORB rule run
+inside it. Three shortlists were pre-registered (written in the module docstring before running):
+
+- **scanner50** (option 3): IBKR's "5min Volume vs Average Volume" scanner at 9:35
+  (`SCAN_stVolumeVsAvg5min_DESC`, max 50 rows, filtered to price > $5 and average volume > 1M).
+  Approximated from history as opening-range volume / 14-day average *daily* volume.
+- **premarket100** (option 1): top 100 by pre-market volume from 4:00 to 9:10 (what a
+  15-minute-delayed feed shows at 9:25) / average daily volume.
+- **gap100** (option 1): top 100 by |pre-market price at 9:10 / previous close - 1|.
+
+Rule: USABLE if top-1 coverage >= 90%; USABLE WITH HAIRCUT if 75-90% and the 1c Sharpe stays
+within 0.15 of the baseline in both halves; otherwise NOT USABLE. 1,235 days, Oct 2021-Sep 2026.
+
+| Shortlist | Top-1 coverage | Sharpe 1c: all / 2021-23 / 2024+ | Sharpe 3c: all | Verdict |
+|---|---|---|---|---|
+| Full market (baseline) | 100% | 0.89 / 0.80 / 0.94 | 0.61 | – |
+| scanner50 | **98%** | 0.80 / 0.71 / 0.84 | 0.53 | **USABLE** |
+| premarket100 | 83% | 0.63 / 0.44 / 0.75 | 0.36 | NOT USABLE |
+| gap100 | 81% | 1.06 / 1.22 / 0.92 | 0.81 | USABLE WITH HAIRCUT |
+
+($5k top-1, 1 ATR stop, IBKR Tiered, fixed 1c or 3c slippage on minute bars, so the levels
+are above the measured-fill numbers elsewhere in this note. Only the differences matter here.)
+
+- **The scanner route works on paper:** 98% coverage at 50 names, 96% at 20. But the
+  scanner's own #1 is the pick only 44% of the time (top 3: 73%, top 5: 83%, top 10: 91%),
+  so the live picker must recompute our exact 14-day relative volume for the scanned names.
+- **2% of days cost 0.09 of Sharpe.** The few days the shortlist misses include some of the
+  rare huge winners that carry ORB, which is the fragility seen in every experiment so far.
+- **Gap100 beating the baseline is not a finding to adopt.** It was pre-registered as a
+  *shortlist*, not as an improvement; it beats the baseline only in 2021-23 (2024+: 0.92 vs
+  0.94), which fails the both-halves rule, and the round-2 gap-catalyst filter already failed.
+- **The proxy is optimistic** in two ways: IBKR's exact "average" is unknown, and the proxy
+  excludes ETFs, which the scanner may return unless `stockTypeFilter="CORP"` removes them.
+  `scanner_log.py` records IBKR's real lists every morning (9:25 pre-market scans and the 9:35
+  volume scan, read-only); `scanner_log compare` checks them against the true pick once the
+  Massive files for that day are downloaded. First capture: 2026-10-01.
+- Massive's full-market snapshot answers in 0.3s on the Starter plan. The first call came at
+  ~4:05 ET (a timezone slip made it look like 8:05), when every intraday field was still zero,
+  so whether it carries delayed pre-market data is untested; `scanner_log capture` now also
+  records it at 9:25.
+
+## Experiment 12: is 5 minutes too short? 10/15/30/60-minute windows (`orb_windows.py`, 2026-10-01)
+
+The owner's hypothesis: a 5-minute range is mostly noise and a longer one gives cleaner
+breakouts. The prior was against it: the paper tested 5/15/30/60 and found 5 best (30 minutes:
+Sharpe 0.21). Pre-registered: same rules except the window (relative volume of the first N
+minutes, direction of the N-minute candle, entry on a break of the N-minute range, 1 ATR stop,
+exit at the close); $5k top-1, IBKR Tiered, 1c and 3c slippage on minute bars. A window passes
+if its 1c Sharpe beats 5 minutes in BOTH halves. 4 windows tried.
+
+| Window | Sharpe all | 2021-23 | 2024+ | CAGR | Max DD | Trades/yr | Sharpe at 3c | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| **5 min** | **0.89** | **0.80** | 0.94 | 15.9% | -21% | 202 | 0.61 | baseline |
+| 10 min | 0.80 | 0.01 | 1.27 | 13.6% | -21% | 192 | 0.55 | fail |
+| 15 min | 0.73 | -0.11 | 1.25 | 11.6% | -26% | 186 | 0.48 | fail |
+| 30 min | 0.38 | -0.29 | 0.56 | 12.3% | -28% | 175 | 0.30 | fail |
+| 60 min | -0.49 | -0.19 | -0.66 | -5.9% | -37% | 156 | -0.81 | fail |
+
+- **The hypothesis is rejected:** over the whole period, every longer window is worse, and the
+  60-minute version loses money. This matches the paper.
+- **10 and 15 minutes look better since 2024 (1.25-1.27 vs 0.94) but were flat to negative in
+  2021-23.** A window that only works in one half is a regime bet, not a fix for noise. With 4
+  windows x 2 halves tried, one half-win like this is expected by chance. It's a thing to
+  watch, not a reason to switch; it would need the untouched 2016-2021 data first.
+- The edge per trade before costs barely changes (avg R 0.10-0.15 up to 30 minutes): longer
+  windows don't produce cleaner breakouts, they just enter later and further from the open.
+
 ## Lessons (apply to future strategies too)
 
 1. **Always test with measured fills.** Zero-slippage intraday backtests are fiction; online
@@ -276,6 +347,9 @@ uv run python -m horizon_trader.intraday.orb_ideas --round 2 [--save]     # Expe
 uv run python -m horizon_trader.intraday.orb_largecap [--save]            # Experiment 8
 uv run python -m horizon_trader.intraday.etf_orb [--save]                 # ETF ORB
 uv run python -m horizon_trader.backtest.mix [--save]                     # combining strategies
+uv run python -m horizon_trader.intraday.orb_shortlist                    # live shortlist check (Experiment 11)
+uv run python -m horizon_trader.intraday.scanner_log capture|compare     # IBKR scanner forward log
+uv run python -m horizon_trader.intraday.orb_windows                      # 10/15/30/60-minute windows (Experiment 12)
 ```
 
 ## Sources

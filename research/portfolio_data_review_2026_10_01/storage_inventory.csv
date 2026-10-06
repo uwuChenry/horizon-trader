@@ -1,0 +1,16 @@
+dataset,files,bytes
+bars,574,217843861
+massive/day,1253,433527852
+massive/minute,1253,31601971996
+massive/seconds,17994,115252701
+sec/companyfacts,360,86086532
+sec/submissions,360,19946673
+sec/tenk,2552,48363047
+sec/text,286,12611239
+sec/index,196,94128
+live,3,8110
+llm/fundamental_scores,42,2359499
+congress,449,59058053
+social,96,15880280
+pwb,96,20908661
+reference,3,342779
