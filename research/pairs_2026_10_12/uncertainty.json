@@ -1,0 +1,30 @@
+{
+  "Full 2017-2026": {
+    "annualized_mean_low": -0.022254184215670905,
+    "annualized_mean_high": 0.014397833504728003,
+    "block_sessions": 20,
+    "draws": 2000,
+    "seed": 20261012
+  },
+  "2017-2023": {
+    "annualized_mean_low": -0.014856539834132123,
+    "annualized_mean_high": 0.027172171367606062,
+    "block_sessions": 20,
+    "draws": 2000,
+    "seed": 20261012
+  },
+  "2024-2025": {
+    "annualized_mean_low": -0.054333858874244086,
+    "annualized_mean_high": 0.02259257858455005,
+    "block_sessions": 20,
+    "draws": 2000,
+    "seed": 20261012
+  },
+  "2026 YTD": {
+    "annualized_mean_low": -0.11655206702340115,
+    "annualized_mean_high": -0.00505236233080631,
+    "block_sessions": 20,
+    "draws": 2000,
+    "seed": 20261012
+  }
+}

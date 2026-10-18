@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "research:competitor-pairs-2026-10-12",
+  "name": "Competitor pairs: 2017\u20132026 backtest",
+  "kind": "research",
+  "description": "Competitor pairs with next-open whole-share fills and carry costs",
+  "start": "2017-01-03",
+  "end": "2026-10-09",
+  "include": [
+    "*.xml",
+    "*.md",
+    "*.csv",
+    "*.json",
+    "data:pairs_2026_10_12/*.csv",
+    "data:pairs_2026_10_12/*.html"
+  ]
+}

@@ -11,12 +11,10 @@ from horizon_trader.dashboard import orb_view as V
 MODE = "path"
 
 
-@st.cache_data(show_spinner="Loading the ORB trade table...")
 def trades(name: str) -> pd.DataFrame:
     return V.load_trades(name)
 
 
-@st.cache_data(show_spinner=False)
 def bars(day, ticker: str) -> pd.DataFrame:
     return V.session_bars(day, ticker)
 

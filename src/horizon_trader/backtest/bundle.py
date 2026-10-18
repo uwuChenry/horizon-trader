@@ -21,6 +21,7 @@ from typing import Any
 import pandas as pd
 
 from horizon_trader.config import REPO_ROOT, data_dir
+from horizon_trader.results.catalog import write_manifest
 
 TRADE_COLUMNS = ["entry_time", "exit_time", "symbol", "side", "qty", "entry_px", "exit_px",
                  "gross", "costs", "pnl"]  # fmt: skip
@@ -76,6 +77,12 @@ def save_run(
     info = {"name": name, "created": now.isoformat(timespec="seconds")} | _git() | (meta or {})
     info |= {"start": str(equity.index[0].date()), "end": str(equity.index[-1].date())}
     (path / "meta.json").write_text(json.dumps(info, indent=2, default=str), encoding="utf-8")
+    write_manifest(
+        path / "result.json", id=f"backtest:{path.name}", name=name, kind="backtest",
+        bundle_id=path.name, description=info.get("strategy", ""),
+        start=info["start"], end=info["end"],
+        include=["*.parquet", "meta.json", "tables/*.parquet"],
+    )
     return path
 
 

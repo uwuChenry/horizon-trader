@@ -8,6 +8,8 @@ data ─► sleeves (swing / position / llm / papers) ─► portfolio + risk �
 
 ## Setup (same on Windows, Ubuntu, and ARM64)
 
+For a shared Windows/Ubuntu checkout on `D:\github`, see [dual-boot setup](docs/dual-boot.md).
+
 Install [uv](https://docs.astral.sh/uv/):
 
 - Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
@@ -40,6 +42,17 @@ uv run python -m horizon_trader.alphas.cli backtest research/alphas/classics.yam
 - **Universe** (`config/universes/us_large_cap.yaml`): today's large caps, which is survivorship-biased. Judge alphas against the equal-weight row, not SPY.
 
 On a server, use `uv sync --no-dev` to keep the install lean.
+
+## Dashboard and results
+
+`uv run python -m horizon_trader.dashboard` opens the unified Results catalog:
+older backtests, current research studies, forward ledgers and saved test evidence.
+Research reports and their data links are browsable, including nested studies.
+New studies use a versioned `result.json` descriptor; existing backtests work unchanged.
+See [the results format and publishing guide](docs/results.md).
+
+Run `uv run python -m horizon_trader.results.check` to run pytest and save its results
+for the dashboard, including the tested code fingerprint and full output.
 
 ## Layout
 

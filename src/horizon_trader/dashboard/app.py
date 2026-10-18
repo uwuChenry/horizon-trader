@@ -53,7 +53,6 @@ st.set_page_config(page_title="horizon-trader backtests", layout="wide")
 # ---------------------------------------------------------------- data
 
 
-@st.cache_data(show_spinner=False)
 def load(run_id: str) -> bundle.Run:
     return bundle.load_run(run_id)
 
@@ -126,10 +125,18 @@ if runs.empty:
     st.stop()
 
 strategies = sorted(runs["strategy"].dropna().unique())
+requested = st.session_state.pop("requested_backtest", None)
 chosen = st.sidebar.multiselect("Strategy", strategies, default=strategies)
 listed = runs[runs["strategy"].isin(chosen)] if chosen else runs
+if requested and requested in set(runs.run_id) and requested not in set(listed.run_id):
+    listed = pd.concat([runs[runs.run_id == requested], listed])
 labels = {r.run_id: f"{r.name}  ·  {r.created[:16].replace('T', ' ')}" for r in listed.itertuples()}
-run_id = st.sidebar.selectbox("Run", list(labels), format_func=lambda rid: labels.get(rid, rid))
+if requested in labels:
+    st.session_state["backtest_run"] = requested
+if st.session_state.get("backtest_run") not in labels:
+    st.session_state.pop("backtest_run", None)
+run_id = st.sidebar.selectbox("Run", list(labels), format_func=lambda rid: labels.get(rid, rid),
+                              key="backtest_run")
 run = load(run_id)
 meta = run.meta
 st.sidebar.caption(
@@ -518,8 +525,11 @@ with tabs[3]:
         by_year.index.name = "year"
         st.dataframe(by_year.round(0), width="stretch")
         st.caption(
-            "Costs are commissions and regulatory fees. Slippage is already inside the fill "
-            "prices, so it shows up in 'before costs' P&L rather than here."
+            meta.get(
+                "costs_description",
+                "Costs are commissions and regulatory fees. Slippage is already inside the fill "
+                "prices, so it shows up in 'before costs' P&L rather than here.",
+            )
         )
 
 # ---------------------------------------------------------------- compare

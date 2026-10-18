@@ -15,12 +15,10 @@ from horizon_trader.dashboard import holdings_view as H
 KEY = "holdings_day"
 
 
-@st.cache_data(show_spinner=False)
 def load(run_id: str) -> bundle.Run:
     return bundle.load_run(run_id)
 
 
-@st.cache_data(show_spinner=False)
 def periods(run_id: str) -> pd.DataFrame:
     r = load(run_id)
     return H.holding_periods(H.held_matrix(r.tables["holdings"], r.equity.index))

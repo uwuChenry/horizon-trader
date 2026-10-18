@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "kind": "research",
+  "id": "research:portfolio_data_review_2026_10_01",
+  "name": "Portfolio and data review",
+  "description": "Descriptive portfolio blends, correlations, uncertainty and execution diagnostics. Synthetic blends are not shared-account execution replays.",
+  "start": "2021-11-01",
+  "end": "2026-09-24",
+  "include": [
+    "*.md",
+    "*.csv",
+    "*.json",
+    "*.html",
+    "results/*"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "kind": "research",
+  "id": "research:orb_ema_exit15_tiered1c",
+  "name": "ORB: 15-minute EMA exits, Tiered + 1c",
+  "description": "Five-minute entries with 15-minute EMA exits; complete metrics, comparisons, 1-ATR curves and verification under Tiered commissions plus assumed 1c slippage.",
+  "start": "2021-10-22",
+  "end": "2026-10-01",
+  "include": [
+    "*.md",
+    "*.csv",
+    "*.json"
+  ],
+  "artifacts": [
+    {
+      "path": "data:orb_ema_2026_10_02/trades_5m_exit15m.parquet",
+      "role": "trades",
+      "label": "All 15-minute EMA trade paths"
+    }
+  ]
+}

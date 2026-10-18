@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.parse import quote, unquote, urlsplit
 
 import pandas as pd
 
@@ -21,7 +22,42 @@ def note_title(path: Path) -> str:
 
 def list_notes(root: Path) -> list[Path]:
     """Notes, most recently edited first."""
-    return sorted(root.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return sorted(root.rglob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def local_links(path: Path, root: Path) -> list[tuple[str, Path]]:
+    """Existing relative report/artifact links, confined to the research directory."""
+    found = []
+    for label, url in re.findall(
+        r"(?<!!)\[([^\]]+)\]\(([^)\s]+)\)", path.read_text(encoding="utf-8")
+    ):
+        parts = urlsplit(url)
+        if parts.scheme or parts.netloc or not parts.path:
+            continue
+        target = (path.parent / unquote(parts.path)).resolve()
+        if target.is_relative_to(root.resolve()) and target.is_file():
+            found.append((label, target))
+    return found
+
+
+def linked_markdown(path: Path, root: Path) -> str:
+    """Make relative file links navigate to the Research viewer instead of a 404."""
+    targets = {target for _, target in local_links(path, root)}
+
+    def replace(match):
+        label, url = match.groups()
+        parts = urlsplit(url)
+        target = (path.parent / unquote(parts.path)).resolve()
+        if parts.scheme or parts.netloc or target not in targets:
+            return match.group()
+        note = target if target.suffix == ".md" else path
+        route = "research?note=" + quote(note.relative_to(root.resolve()).as_posix(), safe="")
+        if target.suffix != ".md":
+            route += "&artifact=" + quote(target.relative_to(root.resolve()).as_posix(), safe="")
+        fragment = urlsplit(url).fragment
+        return f"[{label}]({route}" + (f"#{fragment}" if fragment else "") + ")"
+
+    return re.sub(r"(?<!!)\[([^\]]+)\]\(([^)\s]+)\)", replace, path.read_text(encoding="utf-8"))
 
 
 def links(text: str) -> list[tuple[str, str]]:

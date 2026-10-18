@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "kind": "research",
+  "id": "research:shared_account_2026_10_01",
+  "name": "Shared-account capital comparison",
+  "description": "Account replays at $5k, $10k, $15k and $20k, including stress, older periods, account verification and every saved daily account/order/flow table. Dates below describe the main comparison; older replays have their own periods.",
+  "start": "2021-11-01",
+  "end": "2026-09-24",
+  "include": [
+    "*.md",
+    "*.html",
+    "results/*",
+    "data:shared_account_2026_10_01/runs/**/*.parquet"
+  ]
+}

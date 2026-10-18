@@ -1,0 +1,616 @@
+{
+  "Base net": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "Before all costs": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 0,
+    "borrow_rate": 0,
+    "withholding": 0,
+    "plan": "zero",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0
+  },
+  "1 bp fills": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 1,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "10 bp fills": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 10,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "0.25% borrow": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.0025,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "3% borrow": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.03,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "10% borrow": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.1,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "Fixed commissions": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "fixed",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "$100k capital": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 100000,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "Fractional diagnostic": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": false,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "40-day lookback": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 40,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "90-day lookback": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 90,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "1.5 z entry": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 1.5,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "2.5 z entry": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.5,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "20-session cap": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 20,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "60-session cap": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 60,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "Correlation >= 0.6": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": 0.6,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "Expanded five pairs": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ],
+      [
+        "HD",
+        "LOW"
+      ],
+      [
+        "MCD",
+        "YUM"
+      ],
+      [
+        "V",
+        "MA"
+      ],
+      [
+        "XOM",
+        "CVX"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "KO/PEP alone": {
+    "pairs": [
+      [
+        "KO",
+        "PEP"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "HD/LOW alone": {
+    "pairs": [
+      [
+        "HD",
+        "LOW"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  },
+  "MCD/YUM alone": {
+    "pairs": [
+      [
+        "MCD",
+        "YUM"
+      ]
+    ],
+    "lookback": 60,
+    "entry_z": 2.0,
+    "stop_z": 4.0,
+    "max_hold": 40,
+    "capital": 5000.0,
+    "slippage_bps": 5.0,
+    "borrow_rate": 0.01,
+    "withholding": 0.3,
+    "plan": "tiered",
+    "whole_shares": true,
+    "min_correlation": -1.0,
+    "max_imbalance": 0.15,
+    "min_equity": 2000.0,
+    "debit_rate": 0.08
+  }
+}
