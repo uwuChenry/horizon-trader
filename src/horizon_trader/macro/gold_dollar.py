@@ -262,7 +262,7 @@ def main() -> None:
                 "params": {"test": label},
                 "oos_start": "2017-01-01",
                 "caveats": [
-                    "Five pre-registered tests on the same data; see research/gold_dollar.md.",
+                    "Five pre-registered tests on the same data; see research/gold_dollar.",
                     "Daily adjusted closes from yfinance; trades at the next open.",
                 ],
                 "benchmark": "GLD (buy & hold)",

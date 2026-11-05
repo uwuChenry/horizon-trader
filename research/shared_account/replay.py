@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).parent
 DATA = data_dir() / "shared_account_2026_10_01"
 RESULTS = HERE / "results"
-SETTINGS = ROOT / "research/portfolio_data_review_2026_10_01/results/effective_daily_settings.json"
+SETTINGS = ROOT / "research/portfolio_data_review/results/effective_daily_settings.json"
 SAVED_ORB = (
     data_dir() / "results/20260925-031640_orb-top1-1atr-stop-limit-0c-5k-fixed/trades.parquet"
 )

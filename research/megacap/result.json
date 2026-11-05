@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:megacap",
+  "name": "Owning the biggest companies: top 10 / 50 / 100 vs the S&P 500 and Nasdaq-100",
+  "kind": "research",
+  "status": "reference",
+  "verdict": "Top 50/100 index funds roughly match SPY with the same drawdowns. The point-in-time top 10 beat SPY 2021-26 with a deeper drawdown; today's top 10 back-tested is pure hindsight.",
+  "tags": [
+    "stocks",
+    "buy_and_hold"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/backtest/megacap.py"
+  ]
+}

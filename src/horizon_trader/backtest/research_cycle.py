@@ -33,7 +33,7 @@ from horizon_trader.sleeves.research_cycle import build_cycle_sleeve
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = ROOT / "config/experiments/research_cycle_2026_10_01.yaml"
 INPUTS = ROOT / "data/research_cycle_2026_10_01/inputs"
-REPORT = ROOT / "research/cycle_2026_10_01"
+REPORT = ROOT / "research/qqq_research_cycle"
 RESULTS = REPORT / "results"
 REFERENCE = "qqq_total_return"
 

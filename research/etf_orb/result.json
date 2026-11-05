@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "research:etf_orb",
+  "name": "ETF ORB: QQQ, SPY, TQQQ, SPXL, UPRO, SOXL, SMH",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "ORB on QQQ/SPY/leveraged ETFs, 2021-26: 19 of 21 lose at $5k with measured costs; buy-and-hold wins everywhere.",
+  "tags": [
+    "intraday",
+    "orb",
+    "etf"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/intraday/etf_orb.py"
+  ]
+}

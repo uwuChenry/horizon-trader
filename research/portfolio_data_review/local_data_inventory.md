@@ -1,13 +1,13 @@
 # Local data inventory, 2026-10-01
 
-This read-only audit supplements [the daily ETF data audit](../cycle_2026_10_01/data_audit.md).
+This read-only audit supplements [the daily ETF data audit](../qqq_research_cycle/data_audit.md).
 It inspects actual cached metadata and implementation, without contacting a broker,
 retrieving market data, reading credentials, or changing live settings. The machine-readable
 outputs are [inventory.json](inventory.json) and [storage_inventory.csv](storage_inventory.csv).
 Reproduce with:
 
 ```powershell
-.\.venv\Scripts\python.exe research/portfolio_data_review_2026_10_01/inventory.py
+.\.venv\Scripts\python.exe research/portfolio_data_review/inventory.py
 ```
 
 Counts are a local snapshot, not assertions of vendor entitlement or complete historical

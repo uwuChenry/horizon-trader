@@ -1,6 +1,6 @@
 """Bounded portfolio complementarity screen; local caches only, no executable allocation.
 
-    .venv/Scripts/python.exe research/portfolio_data_review_2026_10_01/analyze_portfolio.py
+    .venv/Scripts/python.exe research/portfolio_data_review/analyze_portfolio.py
 
 Fixed before reading these diagnostics: representative core, baseline ORB, QQQ
 noise; inverse-volatility weights estimated through 2023, frozen thereafter.
@@ -632,7 +632,7 @@ def main():
     metadata = {
         "command": (
             ".venv/Scripts/python.exe "
-            "research/portfolio_data_review_2026_10_01/analyze_portfolio.py"
+            "research/portfolio_data_review/analyze_portfolio.py"
         ),
         "scope": "Descriptive screening; synthetic return blends, not capital/margin/fill replay",
         "initial_nav": INITIAL,

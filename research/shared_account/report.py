@@ -190,7 +190,8 @@ def charts():
     drawdowns.update_yaxes(tickformat=".0%")
     page = HERE / "capital_comparison.html"
     content = page.read_text(encoding="utf-8")
-    content = content.replace("</body>", drawdowns.to_html(include_plotlyjs=False, full_html=False) + "</body>")
+    chart = drawdowns.to_html(include_plotlyjs=False, full_html=False)
+    content = content.replace("</body>", chart + "</body>")
     page.write_text(content, encoding="utf-8")
     pd.concat(curve_rows).to_csv(OUT / "plot_equity.csv")
 
@@ -407,13 +408,13 @@ untouched holdout. The existing live strategies/settings were not changed.
 [implementation decisions](implementation_notes.md), [frozen protocol](protocol.md).
 
 ```powershell
-.venv/Scripts/python.exe research/shared_account_2026_10_01/prepare.py raw
-.venv/Scripts/python.exe research/shared_account_2026_10_01/prepare.py dividends
-.venv/Scripts/python.exe research/shared_account_2026_10_01/prepare.py minutes
-.venv/Scripts/python.exe research/shared_account_2026_10_01/replay.py --stage main
-.venv/Scripts/python.exe research/shared_account_2026_10_01/replay.py --stage stress
-.venv/Scripts/python.exe research/shared_account_2026_10_01/replay.py --stage older
-.venv/Scripts/python.exe research/shared_account_2026_10_01/report.py
+.venv/Scripts/python.exe research/shared_account/prepare.py raw
+.venv/Scripts/python.exe research/shared_account/prepare.py dividends
+.venv/Scripts/python.exe research/shared_account/prepare.py minutes
+.venv/Scripts/python.exe research/shared_account/replay.py --stage main
+.venv/Scripts/python.exe research/shared_account/replay.py --stage stress
+.venv/Scripts/python.exe research/shared_account/replay.py --stage older
+.venv/Scripts/python.exe research/shared_account/report.py
 ```
 """
     (HERE / "report.md").write_text(text, encoding="utf-8")

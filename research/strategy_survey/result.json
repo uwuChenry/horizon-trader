@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:strategy_survey",
+  "name": "Strategy survey: swing and intraday papers (2026-09-25)",
+  "kind": "note",
+  "status": "reference",
+  "verdict": "Swing and intraday papers ranked, plus noise-area momentum results: dead on SPY after publication, held up on QQQ (a paper-trade candidate, chosen after SPY failed).",
+  "tags": [
+    "survey",
+    "intraday"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/intraday/market_momentum.py"
+  ]
+}

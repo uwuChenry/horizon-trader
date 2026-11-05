@@ -1,7 +1,7 @@
 """Audit generated IFVG artifacts and replay causal signals on real data.
 
 Run after the study and the recorded pytest command:
-    python research/ifvg_2026_10_18/verify.py
+    python research/ifvg/verify.py
 """
 
 from __future__ import annotations

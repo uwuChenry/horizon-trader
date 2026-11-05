@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "research:serenity",
+  "name": "Following Serenity (@aleabitoreddit): does it pay?",
+  "kind": "research",
+  "status": "inconclusive",
+  "verdict": "Following his cashtags made money but trailed SMH (34% vs 88% CAGR). His bearish calls carry information (-23.5% vs SMH over 60 days). Forward test pending.",
+  "tags": [
+    "social",
+    "stocks",
+    "llm"
+  ],
+  "updated": "2026-09-28",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/social"
+  ]
+}

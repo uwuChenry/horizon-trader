@@ -3,7 +3,7 @@
 Run 2026-09-27 with `uv run python -m horizon_trader.social.event_study`. Code:
 `src/horizon_trader/social/archive.py` (posts and cashtags) and
 `src/horizon_trader/social/event_study.py` (prices, returns, portfolios). Related:
-[Catching the next Nvidia](winners_momentum.md).
+[Catching the next Nvidia](../winners_momentum/README.md).
 
 ## Answer first
 

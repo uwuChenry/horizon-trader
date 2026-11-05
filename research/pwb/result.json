@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:pwb",
+  "name": "Papers With Backtest: why so many Sharpes above 1.5 (and one of 922), and three replications (2026-09-27)",
+  "kind": "research",
+  "status": "reference",
+  "verdict": "Papers With Backtest's headline Sharpes are mostly mechanical (no risk-free subtraction, today's S&P 500 from 1990, stale prices). Use for ideas, never evidence.",
+  "tags": [
+    "survey",
+    "replication"
+  ],
+  "updated": "2026-09-28",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/pwb"
+  ]
+}

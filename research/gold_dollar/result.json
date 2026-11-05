@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:gold_dollar",
+  "name": "Gold vs the dollar: is the inverse relationship tradeable? (2026-09-25)",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "The same-day gold/dollar inverse link is real and stable, but none of 5 pre-registered trading tests passed.",
+  "tags": [
+    "macro",
+    "etf"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/macro/gold_dollar.py"
+  ]
+}

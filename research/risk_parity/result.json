@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "research:risk_parity",
+  "name": "Risk parity as a replacement for the trend sleeve",
+  "kind": "research",
+  "status": "candidate",
+  "verdict": "Risk parity: Sharpe 0.74 vs trend's 0.73 but only 0.59 correlated with momentum. Swapping it in for trend lifts the book from 0.82 to 0.87. Not switched on yet.",
+  "tags": [
+    "daily",
+    "etf",
+    "portfolio"
+  ],
+  "updated": "2026-10-01",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/sleeves/risk_parity.py"
+  ]
+}

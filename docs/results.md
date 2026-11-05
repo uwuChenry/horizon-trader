@@ -1,17 +1,11 @@
 # Results and dashboard
 
-Run `uv run python -m horizon_trader.dashboard`. **Results** is the landing page.
-It discovers old saved backtests, registered research studies, forward ledgers,
-IBKR observations and recorded software checks. Use the type/search filters,
-select a result, then read its report or browse its tables, curves and verification.
-Grid tables can be filtered by period, strategy, costs, capital and risk settings.
-Downloads contain the original full file; table previews show up to 2,000 rows.
-
-**Backtests**, **Holdings**, and **ORB day** retain their detailed views. The
-Results page's **Open trade analysis** button opens the selected saved backtest.
-**Research** discovers Markdown recursively and resolves related report/data links.
-Refresh the page or click **Refresh results** to pick up new files. Saved experiments
-are historical snapshots: refreshing does not fetch market data or rerun a strategy.
+Run `uv run python -m horizon_trader.dashboard` (build the frontend first with
+`cd web && npm install && npm run build`). The **Research** page lists every study under
+`research/` by status, with its report, documents and data files. **Backtests** lists every
+bundle under `data/results`; **Live** shows the ledgers under `data/live` and the IBKR
+observation logs. Pages read files on each request: refreshing never fetches market data or
+reruns a strategy.
 
 ## Common contract
 
@@ -23,11 +17,14 @@ fills and gross trade paths are not converted into invented round-trip statistic
 
 Old `data/results/<run>/meta.json` bundles are adapted directly, without migration
 or duplication. `bundle.save_run()` now also writes a version 1 `result.json`.
-Research uses the same descriptor. The seven existing studies are registered beside
-their reports; their CSV/Parquet/JSON evidence stays in its original location.
+Research uses the same descriptor: every folder under `research/` has one, next to its
+README; large CSV/Parquet evidence stays under `data/` and is referenced as `data:...`.
 
 To register a new study, write artifacts first, then publish this descriptor in
-`research/<study>/result.json` (or `data/results/<run>/result.json`):
+`research/<study>/result.json` (or `data/results/<run>/result.json`). Research studies also
+carry the curated fields `status`, `verdict` and `tags` (see `results/index.py`); re-running a
+script with `write_manifest` keeps them. Then regenerate `research/README.md` with
+`uv run python -m horizon_trader.results.index`:
 
 ```json
 {
@@ -74,8 +71,7 @@ File modification times are shown separately from the dates covered by the data.
 
 This runs pytest and writes its actual exit status, counts, JUnit XML, captured output,
 timestamps and code/config fingerprint to `data/checks/<timestamp>/`. Failures and
-collection errors remain visible. The dashboard warns when code has changed since
-a recorded check. Historical research verification JSON remains historical evidence;
+collection errors remain visible. Historical research verification JSON remains historical evidence;
 viewing it does not rerun or certify the underlying experiment.
 
 Data and check outputs remain git-ignored. Descriptors and reports in `research/`

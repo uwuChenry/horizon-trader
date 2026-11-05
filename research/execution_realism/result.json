@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "id": "research:execution_realism",
+  "name": "Alpaca paper versus IBKR Pro live execution",
+  "kind": "note",
+  "status": "reference",
+  "verdict": "Alpaca paper fills at the NBBO with no latency, impact or queue position: good for testing order handling, not proof that an intraday edge survives live.",
+  "tags": [
+    "execution",
+    "alpaca",
+    "ibkr"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ]
+}

@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "id": "research:competitor-pairs-2026-10-12",
-  "name": "Competitor pairs: 2017\u20132026 backtest",
+  "id": "research:pairs",
+  "name": "Competitor pairs: 2017–2026 backtest",
   "kind": "research",
+  "status": "dead",
+  "verdict": "KO/PEP, HD/LOW and MCD/YUM, 2017-2026 at $5k: -0.39% CAGR net, Sharpe -0.11.",
+  "tags": [
+    "stocks",
+    "pairs"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "Competitor pairs with next-open whole-share fills and carry costs",
   "start": "2017-01-03",
   "end": "2026-10-09",
@@ -13,5 +21,8 @@
     "*.json",
     "data:pairs_2026_10_12/*.csv",
     "data:pairs_2026_10_12/*.html"
+  ],
+  "code": [
+    "src/horizon_trader/backtest/pairs.py"
   ]
 }

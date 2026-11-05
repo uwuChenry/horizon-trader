@@ -2,7 +2,7 @@
 
 Run 2026-09-29, `uv run python -m horizon_trader.backtest.multifactor`. The rules were
 pre-registered in the module docstring before any result was seen. Background:
-[arbitrage_and_edges.md](arbitrage_and_edges.md) and [quant_reading_list.md](quant_reading_list.md).
+[arbitrage_and_edges.md](../arbitrage_and_edges/README.md) and [quant_reading_list.md](../quant_reading_list/README.md).
 
 **Verdict:** 2 of 3 pre-registered tests failed, and nothing beat the equal-weight universe.
 - **Equal-weight composite:** it lowered risk (max drawdown -13% vs -17% for the universe)
@@ -77,7 +77,7 @@ Pre-registered verdicts:
   its IC t-stat is 0.56, and 1.02 net vs the universe's 1.06 gross is no edge. Worth
   re-testing on a longer history, and with 10-Qs as in the paper (only 10-Ks here).
 - **Momentum alone** (29.6% net, Sharpe 0.94, beta 1.46) repeats
-  [winners_momentum.md](winners_momentum.md): a levered bet on the rally.
+  [winners_momentum.md](../winners_momentum/README.md): a levered bet on the rally.
 
 ## Caveats
 - **4 years, one regime.** A Sharpe difference below ~0.5 isn't significant. Value's long

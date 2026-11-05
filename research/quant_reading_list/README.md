@@ -122,8 +122,8 @@ so the table is an upper bound.
 ## Building the five quant styles here (added 2026-09-29)
 
 How each style funds run maps onto this repo at $5k, long-only, IBKR Tiered. Results
-(2026-09-29): [multifactor.md](multifactor.md) (composites, Lazy Prices, learned weights) and
-[risk_parity.md](risk_parity.md).
+(2026-09-29): [multifactor.md](../multifactor/README.md) (composites, Lazy Prices, learned weights) and
+[risk_parity.md](../risk_parity/README.md).
 
 ### How to combine signals (multi-factor), step by step
 1. **Universe per month:** the point-in-time 200-500 largest US stocks from Massive (delisted

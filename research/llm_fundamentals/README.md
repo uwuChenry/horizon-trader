@@ -1,7 +1,7 @@
 # Claude fundamental scores, monthly forward test (started 2026-10-01)
 
 Code: `llm/fundamentals.py`, with data from `datasources/sec.py`. Background: item #1 in
-[llm_strategies_survey.md](llm_strategies_survey.md) and the "time capsule" design of
+[llm_strategies_survey.md](../llm_strategies_survey/README.md) and the "time capsule" design of
 [Lehner & Lopez-Lira (2026)](https://arxiv.org/abs/2604.21433), who scored stocks with frozen
 ChatGPT snapshots on fundamentals only.
 

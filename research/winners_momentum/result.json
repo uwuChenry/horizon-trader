@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:winners_momentum",
+  "name": "Catching the next Nvidia: momentum among the 200 largest companies",
+  "kind": "research",
+  "status": "candidate",
+  "verdict": "12-1 momentum, top 10 of the point-in-time 200 largest, 2022-26: 45% CAGR, Sharpe 1.14, -40% DD, slightly behind SPY levered to the same beta. One bull sample: validate on 2016-2021.",
+  "tags": [
+    "stocks",
+    "momentum"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/backtest/winners.py"
+  ]
+}

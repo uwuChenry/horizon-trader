@@ -20,7 +20,7 @@ the **Backtests** page (names start with "ORB").
 - **What helped (pre-registered test):** no entries after 10:00–11:00, and requiring higher
   relative volume. **What hurt:** trading with SPY's direction, breakeven stops, trailing stops.
   No idea raised the win rate (~44%).
-- **Parameter grid (see [ORB parameter grid](orb_parameter_grid.md)):** 480 configurations ×
+- **Parameter grid (see [ORB parameter grid](../orb_parameter_grid/README.md)):** 480 configurations ×
   4 slippage scenarios × 2 account sizes. Picking the best on 2021–23 lost to the plain
   baseline on 2024–26 in 8 of 8 cases; nothing survives a correction for 480 tries. Profit
   targets and tight stops always hurt; relative volume ≥ 12 plus no entries after 10:30 is
@@ -28,9 +28,9 @@ the **Backtests** page (names start with "ORB").
 - **Round-2 filters and large caps (Experiments 8–10):** a large-cap filter, an overnight-gap
   catalyst and a volatility-regime filter all failed the pre-registered test. Large caps are
   cheaper per share in percent but lose the edge.
-- **ORB on ETFs failed** (see [ETF ORB](etf_orb.md)): slippage is small there, but so is
+- **ORB on ETFs failed** (see [ETF ORB](../etf_orb/README.md)): slippage is small there, but so is
   the edge in 2021–2026.
-- **Combining matters more than tuning** (see [Combining strategies](portfolio_mix.md)): overlaid
+- **Combining matters more than tuning** (see [Combining strategies](../portfolio_mix/README.md)): overlaid
   on the daily book in one margin account, ORB lifts the portfolio's Sharpe from 0.91 to 1.00
   (not pre-registered).
 - **Next:** confirm on data none of this has touched (2016–2021), and paper trade on IBKR.

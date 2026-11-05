@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "research:orb_stocks_in_play",
+  "name": "ORB on Stocks in Play: the paper (2026-09-25)",
+  "kind": "research",
+  "status": "reference",
+  "verdict": "The paper's signal replicates before costs but is fragile to slippage: at measured stop-market fills, $5k top-1 makes 6% CAGR, Sharpe 0.42. The live candidate is in orb_experiments.",
+  "tags": [
+    "intraday",
+    "orb",
+    "stocks"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/intraday/orb.py",
+    "src/horizon_trader/intraday/slippage.py"
+  ]
+}

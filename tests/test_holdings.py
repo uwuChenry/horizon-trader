@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -120,40 +118,3 @@ def test_positions_at_and_rebalance_helpers():
     assert H.rebalance_changes(picks, CAL[6]) == {"bought": ["B"], "sold": [], "kept": ["A"]}
     assert H.positions_at(h, eq, CAL[0], picks).empty
     assert H.snap(CAL, pd.Timestamp("2024-01-06")) == pd.Timestamp("2024-01-05")  # Saturday
-
-
-def test_holdings_page_renders_and_moves_through_time(tmp_path, monkeypatch):
-    pytest.importorskip("streamlit")
-    from streamlit.testing.v1 import AppTest
-
-    monkeypatch.setenv("HT_DATA_DIR", str(tmp_path))
-    page = Path(__file__).resolve().parents[1] / "src/horizon_trader/dashboard/holdings.py"
-    at = AppTest.from_file(str(page), default_timeout=60).run()
-    assert not at.exception and at.info  # no runs yet: a hint, not a crash
-
-    eq = pd.Series(np.linspace(100, 120, 10), index=CAL)
-    picks = pd.DataFrame(
-        {
-            "formation": [CAL[0], CAL[6]],
-            "rank": [1, 1],
-            "ticker": ["A", "B"],
-            "name": ["A Inc", "B Inc"],
-            "momentum": [0.5, 0.6],
-            "market_cap": 1e9,
-            "selected": [True, True],
-        }
-    )
-    meta = {"strategy": "test", "how_it_works": "**Rule**: synthetic."}
-    tables = {"holdings": _holdings(), "picks": picks}
-    trades = pd.DataFrame(columns=bundle.TRADE_COLUMNS)
-    bundle.save_run("synthetic holdings", eq, trades, meta, eq, tables)
-    at = AppTest.from_file(str(page), default_timeout=60).run()
-    assert not at.exception, at.exception
-    assert at.title[0].value == "synthetic holdings"
-    assert at.metric[3].value == "2"  # A and B held on the last day
-    at.slider[0].set_value(CAL[5].date()).run()
-    assert not at.exception and at.metric[3].value == "1"
-    at.button[0].click().run()  # jump back to the previous rebalance's trading day
-    assert not at.exception and at.metric[0].value == str(CAL[1].date())
-    at.button[1].click().run()  # and forward to the next one (formed CAL[6], traded CAL[7])
-    assert not at.exception and at.metric[0].value == str(CAL[7].date())

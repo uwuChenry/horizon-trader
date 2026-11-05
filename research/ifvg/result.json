@@ -1,8 +1,17 @@
 {
   "schema_version": 1,
-  "id": "research:ifvg_2026_10_18",
-  "kind": "research",
+  "id": "research:ifvg",
   "name": "IFVG: mechanical gap inversions on SPY and QQQ",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "All 12 mechanical IFVG variants on SPY/QQQ lose after Tiered fees and 1c slippage, in both 2021-23 and 2024-26.",
+  "tags": [
+    "intraday",
+    "etf",
+    "indicators"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "Frozen five-minute rules, breakout controls, costs and chronological checks.",
   "start": "2021-10-04",
   "end": "2026-09-24",
@@ -32,5 +41,8 @@
       "role": "chart",
       "label": "Standalone equity and drawdown chart"
     }
+  ],
+  "code": [
+    "src/horizon_trader/intraday/ifvg.py"
   ]
 }

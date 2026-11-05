@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:alphas",
+  "name": "Alpha formulas on ~100 large caps, 2010-2023",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "None of 20 formula variants on ~100 large caps (2010-2023) reached t > 2 in the claimed direction; 12-1 momentum and 1-week reversal came closest at t ~ 1.95.",
+  "tags": [
+    "stocks",
+    "factors",
+    "llm"
+  ],
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/alphas"
+  ]
+}

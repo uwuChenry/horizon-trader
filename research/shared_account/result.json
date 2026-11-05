@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "kind": "research",
-  "id": "research:shared_account_2026_10_01",
+  "id": "research:shared_account",
   "name": "Shared-account capital comparison",
+  "kind": "research",
+  "status": "inconclusive",
+  "verdict": "Replaying the combined portfolio in one account at $5k-$20k: minimum commissions, whole shares and shared buying power break the return-stream estimate. No allocation met the objective.",
+  "tags": [
+    "portfolio",
+    "execution"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "Account replays at $5k, $10k, $15k and $20k, including stress, older periods, account verification and every saved daily account/order/flow table. Dates below describe the main comparison; older replays have their own periods.",
   "start": "2021-11-01",
   "end": "2026-09-24",

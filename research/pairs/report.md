@@ -142,7 +142,7 @@ market exposure and have much higher invested capital than the pairs strategy.
 - Standalone interactive chart: `data/pairs_2026_10_12/pairs_report.html`.
 - Daily ledger, exact leg fills and holdings: `data/pairs_2026_10_12/`.
 - Dashboard bundles: `data\results\20261013-002313_competitor-pairs-net-5k-full-2017-2026`, `data\results\20261013-002313_competitor-pairs-net-5k-2026-ytd`.
-- Run `.venv\Scripts\python.exe research/pairs_2026_10_12/run.py` against the
+- Run `.venv\Scripts\python.exe research/pairs/run.py` against the
   frozen raw files; hashes are recorded in verification.json.
 - Tests: `.venv\Scripts\python.exe -m pytest tests/test_pairs.py -q`.
 

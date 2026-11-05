@@ -312,7 +312,7 @@ def chart(daily, dest):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=REPO_ROOT / "research" / STUDY)
+    parser.add_argument("--output", type=Path, default=REPO_ROOT / "research" / "ifvg")
     args = parser.parse_args()
     out = args.output
     protocol = out / "protocol.md"

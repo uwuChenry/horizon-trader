@@ -51,19 +51,19 @@ indicative prices cannot establish executable spreads.
 
 ## Existing repo evidence
 
-[ORB experiments, experiment 3](orb_experiments.md): on 1,980 top-two entries and
+[ORB experiments, experiment 3](../orb_experiments/README.md): on 1,980 top-two entries and
 574 stop-outs, the next-second trade-price proxy was 4.5 cents/share worse on
 entry on average and 4.0 cents/share worse on stop-out. These are historical
 trade-bar estimates against the original modeled prices, **not measured IBKR
 fills**, and they do not include bid/ask or queue information. They are specific
 to those selected stocks and triggers, not a universal slippage allowance.
 
-[Later ORB/EMA research](orb_ema.md) uses the owner's assumed 1 cent/share costs.
+[Later ORB/EMA research](../orb_ema/README.md) uses the owner's assumed 1 cent/share costs.
 That remains an assumption, not broker validation. Earlier notes calling paper
 trading a measurement of "real slippage" should be interpreted as measuring
 simulator behavior; only live execution observations reveal live fills.
 
-[ORB executor](../src/horizon_trader/intraday/orb_live.py) starts its scanner step
+[ORB executor](../../src/horizon_trader/intraday/orb_live.py) starts its scanner step
 at 09:35:05, then collects bars and submits a stop-limit bracket. Scanner and bar
 acquisition delays must be measured too. Once accepted, broker-managed orders
 reduce dependence on a local price-monitoring loop; stop-limit orders can still

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "research:arbitrage_and_edges",
+  "name": "Arbitrage, parity and where returns actually come from",
+  "kind": "note",
+  "status": "reference",
+  "verdict": "Q&A: why prediction-market, crypto and put-call parity gaps usually pay for a cost or a risk, and what mid-horizon quant funds run.",
+  "tags": [
+    "survey"
+  ],
+  "updated": "2026-10-01",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ]
+}

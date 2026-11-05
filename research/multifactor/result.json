@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "research:multifactor",
+  "name": "Multi-factor stock selection, Lazy Prices and learned weights (point-in-time top 200)",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "No composite beat the equal-weight point-in-time top 200 (2022-26); 2 of 3 pre-registered tests failed. Lazy Prices is the best single signal, not significant.",
+  "tags": [
+    "stocks",
+    "factors",
+    "fundamentals"
+  ],
+  "updated": "2026-10-01",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/backtest/multifactor.py"
+  ]
+}

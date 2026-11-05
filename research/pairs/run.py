@@ -1,7 +1,7 @@
 """Run the fixed competitor-pairs protocol and publish reproducible research artifacts.
 
-    .venv/Scripts/python.exe research/pairs_2026_10_12/prepare.py
-    .venv/Scripts/python.exe research/pairs_2026_10_12/run.py
+    .venv/Scripts/python.exe research/pairs/prepare.py
+    .venv/Scripts/python.exe research/pairs/run.py
 
 No network requests, parameter search, or broker connections in this runner.
 """
@@ -446,7 +446,7 @@ market exposure and have much higher invested capital than the pairs strategy.
 - Standalone interactive chart: `data/pairs_2026_10_12/pairs_report.html`.
 - Daily ledger, exact leg fills and holdings: `data/pairs_2026_10_12/`.
 - Dashboard bundles: {", ".join(f"`{p}`" for p in bundles)}.
-- Run `.venv\\Scripts\\python.exe research/pairs_2026_10_12/run.py` against the
+- Run `.venv\\Scripts\\python.exe research/pairs/run.py` against the
   frozen raw files; hashes are recorded in verification.json.
 - Tests: `.venv\\Scripts\\python.exe -m pytest tests/test_pairs.py -q`.
 
@@ -456,13 +456,13 @@ Sources and motivation: [Gatev et al.](https://doi.org/10.1093/rfs/hhj020),
 [short-sale costs](https://www.interactivebrokers.com/en/pricing/short-sale-cost.php).
 """
     (HERE / "report.md").write_text(report, encoding="utf-8")
-    (ROOT / "research/pairs_trading.md").write_text(
+    (ROOT / "research/pairs/README.md").write_text(
         "# Competitor pairs: fixed-rule backtest\n\n"
         + f"2017–2026-10-09, $5,000: {equity_stats(net.daily.equity)['CAGR']:+.2%} CAGR "
         + f"net, Sharpe {equity_stats(net.daily.equity)['Sharpe']:.2f}. "
         + "KO/PEP, HD/LOW and MCD/YUM, next-open execution and explicit carry costs.\n\n"
-        + "[Full report](pairs_2026_10_12/report.md) · "
-        + "[Protocol](pairs_2026_10_12/protocol.md)\n",
+        + "[Full report](report.md) · "
+        + "[Protocol](protocol.md)\n",
         encoding="utf-8",
     )
     write_manifest(

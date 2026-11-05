@@ -1,7 +1,7 @@
 """Reproduce the existing daily book from immutable local reads, without network refresh.
 
 Run from the repository root:
-    .venv/Scripts/python.exe research/cycle_2026_10_01/reproduce_legacy.py
+    .venv/Scripts/python.exe research/qqq_research_cycle/reproduce_legacy.py
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ def main() -> None:
     equities.to_csv(args.output / "legacy_equity.csv", index_label="date")
     pd.DataFrame(cash_rows).to_csv(args.output / "legacy_cash_audit.csv", index=False)
     metadata = {
-        "command": ".venv/Scripts/python.exe research/cycle_2026_10_01/reproduce_legacy.py",
+        "command": ".venv/Scripts/python.exe research/qqq_research_cycle/reproduce_legacy.py",
         "requested_start": args.start,
         "requested_end": args.end,
         "actual_start": str(equities.index.min().date()),

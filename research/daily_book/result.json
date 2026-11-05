@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "research:daily_book",
+  "name": "The daily ETF book: four sleeves, 2008 to today",
+  "kind": "research",
+  "status": "core",
+  "verdict": "Combined ETF book 2008-2026 at $5k Tiered: 6.5% CAGR, Sharpe 0.83, -12% max DD (SPY 11.3%, 0.64, -52%). Momentum and vol-managed SPY carry it; trend is redundant, RSI(2) is weak. Forward-testing in shadow mode since 2026-10-01.",
+  "tags": [
+    "daily",
+    "etf",
+    "portfolio"
+  ],
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/sleeves",
+    "src/horizon_trader/backtest/run.py",
+    "src/horizon_trader/run_daily.py"
+  ]
+}

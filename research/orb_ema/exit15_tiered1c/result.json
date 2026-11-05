@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "kind": "research",
-  "id": "research:orb_ema_exit15_tiered1c",
+  "id": "research:orb_ema/exit15_tiered1c",
   "name": "ORB: 15-minute EMA exits, Tiered + 1c",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "15-minute EMA exits lift net CAGR from -3.3% to +4.4%, but holding to the close makes 16.8% under the same Tiered/1c assumptions.",
+  "tags": [
+    "intraday",
+    "orb"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "Five-minute entries with 15-minute EMA exits; complete metrics, comparisons, 1-ATR curves and verification under Tiered commissions plus assumed 1c slippage.",
   "start": "2021-10-22",
   "end": "2026-10-01",

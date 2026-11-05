@@ -1,5 +1,5 @@
-"""ORB day viewer logic: one day's Stocks in Play, each trade's path, and a TradingView-style
-chart. Reads the cached trade tables from `intraday.orb` (build them with
+"""ORB day viewer logic: one day's Stocks in Play, each trade's path, for the dashboard's
+minute chart. Reads the cached trade tables from `intraday.orb` (build them with
 `uv run python -m horizon_trader.intraday.orb`) and the Massive minute bars; nothing here
 re-runs the strategy, so the page shows exactly what the backtest simulated."""
 
@@ -10,15 +10,11 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from horizon_trader.datasources import massive
 from horizon_trader.intraday import features as F
 from horizon_trader.intraday import orb
 
-UP, DOWN = "#26a69a", "#ef5350"  # TradingView's default candle colours
-OR_FILL, LEVEL, STOP, ENTRY = "rgba(42,120,214,0.12)", "#2a78d6", "#e34948", "#2a78d6"
 MINUTES = 5
 CAPITAL = 5_000.0
 
@@ -118,134 +114,6 @@ def size_trade(
         "net $": gross - costs,
         "risk $": qty * row["stop_dist"],
     }
-
-
-def day_figure(bars: pd.DataFrame, row: pd.Series, path: dict, title: str) -> go.Figure:
-    """Candles + volume, the opening-range box, the breakout level, and the trade: entry
-    marker, stop line while the position is open, exit marker."""
-    fig = make_subplots(
-        rows=2, cols=1, shared_xaxes=True, row_heights=[0.78, 0.22], vertical_spacing=0.02
-    )
-    fig.add_candlestick(
-        x=bars["ts"],
-        open=bars["open"],
-        high=bars["high"],
-        low=bars["low"],
-        close=bars["close"],
-        name=str(row["ticker"]),
-        increasing=dict(line=dict(color=UP), fillcolor=UP),
-        decreasing=dict(line=dict(color=DOWN), fillcolor=DOWN),
-        row=1,
-        col=1,
-    )
-    colors = np.where(bars["close"] >= bars["open"], UP, DOWN)
-    fig.add_bar(
-        x=bars["ts"],
-        y=bars["volume"],
-        marker_color=colors,
-        opacity=0.6,
-        name="volume",
-        row=2,
-        col=1,
-    )
-    start = F.session_open(row["date"].date())
-    or_end, close = start + pd.Timedelta(minutes=MINUTES), start + orb.CLOSE_TIME
-    fig.add_shape(
-        type="rect",
-        x0=start,
-        x1=or_end,
-        y0=path["or_low"],
-        y1=path["or_high"],
-        fillcolor=OR_FILL,
-        line=dict(color=LEVEL, width=1),
-        row=1,
-        col=1,
-    )
-    fig.add_annotation(
-        x=start,
-        y=path["or_high"],
-        text=f"{MINUTES}-min opening range",
-        showarrow=False,
-        yanchor="bottom",
-        xanchor="left",
-        font=dict(size=11),
-        row=1,
-        col=1,
-    )
-    side = int(row["side"])
-    fig.add_scatter(
-        x=[or_end, close],
-        y=[path["level"]] * 2,
-        mode="lines",
-        line=dict(color=LEVEL, width=1, dash="dot"),
-        name=f"breakout level ({'high' if side > 0 else 'low'} of the range)",
-        row=1,
-        col=1,
-    )
-    if path["triggered"]:
-        t0, t1 = path["entry_time"], path["exit_time"]
-        fig.add_scatter(
-            x=[t0, t1],
-            y=[path["stop_px"]] * 2,
-            mode="lines",
-            line=dict(color=STOP, width=1.5, dash="dash"),
-            name=f"stop {path['stop_px']:.2f}",
-            row=1,
-            col=1,
-        )
-        fig.add_vrect(x0=t0, x1=t1, fillcolor="rgba(137,135,129,0.08)", line_width=0, row=1, col=1)
-        verb_in, verb_out = ("BUY", "SELL") if side > 0 else ("SHORT", "COVER")
-        win = side * (path["exit_px"] - path["entry_px"]) > 0
-        fig.add_scatter(
-            x=[t0],
-            y=[path["entry_px"]],
-            mode="markers+text",
-            marker=dict(
-                symbol="triangle-up" if side > 0 else "triangle-down",
-                size=15,
-                color=ENTRY,
-                line=dict(color="white", width=1),
-            ),
-            text=[f"{verb_in} {path['entry_px']:.2f}"],
-            textposition="bottom right",
-            name=f"entry {t0:%H:%M}",
-            row=1,
-            col=1,
-        )
-        fig.add_scatter(
-            x=[t1],
-            y=[path["exit_px"]],
-            mode="markers+text",
-            marker=dict(
-                symbol="x", size=13, color=UP if win else DOWN, line=dict(color="white", width=1)
-            ),
-            text=[f"{verb_out} {path['exit_px']:.2f} ({path['exit_reason'].split()[0]})"],
-            textposition="top left",
-            name=f"exit {t1:%H:%M}",
-            row=1,
-            col=1,
-        )
-    fig.update_layout(
-        title=dict(text=title, y=0.985, yanchor="top"),
-        height=640,
-        margin=dict(l=10, r=10, t=90, b=10),
-        hovermode="x unified",
-        xaxis_rangeslider_visible=False,
-        bargap=0,
-        legend=dict(orientation="h", y=1.01, yanchor="bottom", x=0),
-    )
-    spikes = dict(
-        showspikes=True,
-        spikemode="across",
-        spikesnap="cursor",
-        spikethickness=1,
-        spikedash="dot",
-        spikecolor="#898781",
-    )
-    fig.update_xaxes(showgrid=False, **spikes)
-    fig.update_yaxes(gridcolor="rgba(137,135,129,0.2)", side="right", **spikes)
-    fig.update_yaxes(title_text="volume", row=2, col=1, showspikes=False)
-    return fig
 
 
 RULES_MD = """**Opening Range Breakout on Stocks in Play** (Zarattini, Barbon & Aziz 2024,

@@ -1,7 +1,7 @@
 """Mechanical IFVG signals and conservative minute-bar execution, with no broker calls.
 
 Research runner: ``python -m horizon_trader.intraday.ifvg_study``.
-Exact experiment: research/ifvg_2026_10_18/protocol.md.
+Exact experiment: research/ifvg/protocol.md.
 """
 
 from __future__ import annotations

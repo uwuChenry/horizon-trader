@@ -1,7 +1,7 @@
 # Catching the next Nvidia: momentum among the 200 largest companies
 
 Run 2026-09-26 with `uv run python -m horizon_trader.backtest.winners`. Code:
-`src/horizon_trader/backtest/winners.py`. Follows [Owning the biggest companies](megacap.md).
+`src/horizon_trader/backtest/winners.py`. Follows [Owning the biggest companies](../megacap/README.md).
 
 > **Corrected 2026-09-26.** The first run had a data error: two reused tickers (see
 > [Data fix](#data-fix-reused-tickers)) produced fake momentum. All numbers below are after the fix.

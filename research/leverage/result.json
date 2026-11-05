@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:leverage",
+  "name": "How much leverage on semiconductors is too much? SMH vs SOXL vs SMH on margin",
+  "kind": "research",
+  "status": "reference",
+  "verdict": "Growth-optimal leverage on SMH is ~1x from 2000 (2.4-2.9x from 2010). More than ~1.5x on a semis-only position is too much; SOXL trails 3x SMH.",
+  "tags": [
+    "leverage",
+    "etf"
+  ],
+  "updated": "2026-09-28",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/backtest/leverage.py"
+  ]
+}

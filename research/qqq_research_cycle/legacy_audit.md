@@ -10,7 +10,7 @@ No existing configured sleeve meets the requested return-and-drawdown objective.
 From the repository root, using the existing environment:
 
 ```powershell
-.venv\Scripts\python.exe research/cycle_2026_10_01/reproduce_legacy.py
+.venv\Scripts\python.exe research/qqq_research_cycle/reproduce_legacy.py
 ```
 
 The script reads `data/bars/*.parquet` directly, never calls the normal daily
@@ -20,7 +20,7 @@ paths, a settings snapshot, equity curves, exact metrics, and reconstructed
 cash diagnostics under `results/legacy*`. To use the saved settings:
 
 ```powershell
-.venv\Scripts\python.exe research/cycle_2026_10_01/reproduce_legacy.py --config research/cycle_2026_10_01/results/legacy_config.json
+.venv\Scripts\python.exe research/qqq_research_cycle/reproduce_legacy.py --config research/qqq_research_cycle/results/legacy_config.json
 ```
 
 The JSON settings snapshot is also valid YAML for the existing settings loader.
@@ -128,7 +128,7 @@ edited for either fix.
 
 ```powershell
 .venv\Scripts\python.exe -m pytest tests/test_backtest.py tests/test_analytics.py tests/test_sleeves.py tests/test_portfolio.py tests/test_rebalance.py -q -p no:cacheprovider --basetemp=data/tmp/pytest_sim_audit_20261001
-.venv\Scripts\ruff.exe check src/horizon_trader/backtest/sim.py src/horizon_trader/backtest/analytics.py tests/test_backtest.py tests/test_analytics.py research/cycle_2026_10_01/reproduce_legacy.py
+.venv\Scripts\ruff.exe check src/horizon_trader/backtest/sim.py src/horizon_trader/backtest/analytics.py tests/test_backtest.py tests/test_analytics.py research/qqq_research_cycle/reproduce_legacy.py
 ```
 
 62 tests passed; lint passed. The first test invocation used pytest's existing

@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "kind": "research",
-  "id": "research:orb_ema_confirmation_risk",
+  "id": "research:orb_ema/confirmation_risk",
   "name": "ORB confirmation, stops and risk sizing",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "Two-close EMA confirmation modestly helps but still trails ORB; 0.5-ATR stops and larger risk budgets make it worse.",
+  "tags": [
+    "intraday",
+    "orb"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "All 24 configurations for one/two-close confirmation, stop widths, risk budgets and leverage caps; includes complete equity, fills, matched paths and verification.",
   "start": "2021-10-22",
   "end": "2026-10-01",

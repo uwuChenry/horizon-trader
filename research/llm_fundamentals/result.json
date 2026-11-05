@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "research:llm_fundamentals",
+  "name": "Claude fundamental scores, monthly forward test (started 2026-10-01)",
+  "kind": "forward",
+  "status": "running",
+  "verdict": "Monthly Claude scores of the 200 largest companies, forward test since 2026-10-01. PASS after 12 runs if mean 1-month rank IC > 0 (t > 1) and the top 20 beat equal weight; KILL if IC <= 0.",
+  "tags": [
+    "llm",
+    "stocks",
+    "fundamentals"
+  ],
+  "updated": "2026-10-01",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/llm/fundamentals.py"
+  ]
+}

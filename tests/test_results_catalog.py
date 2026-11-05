@@ -176,48 +176,6 @@ def test_schema_and_duplicate_id_errors_are_visible(roots):
     assert "schema_version" in issues[0]
 
 
-def test_results_page_renders_research_and_refreshes_new_artifacts(roots):
-    pytest.importorskip("streamlit")
-    from streamlit.testing.v1 import AppTest
-
-    repo, _ = roots
-    directory = study(repo)
-    app = Path(__file__).resolve().parents[1] / "src/horizon_trader/dashboard/results.py"
-    at = AppTest.from_file(str(app), default_timeout=30).run()
-    assert not at.exception
-    assert at.title[0].value == "Results"
-    assert "Evidence." in " ".join(m.value for m in at.markdown)
-    assert at.sidebar.multiselect[0].options == ["research"]
-    assert any("2026-10-02" in c.value for c in at.caption)
-    (directory / "metrics.csv").write_text("strategy,cagr\na,0.1\nb,-0.2\n", encoding="utf-8")
-    at.run()
-    assert not at.exception
-    artifact = next(s for s in at.selectbox if s.label == "Artifact")
-    assert "metrics.csv" in artifact.options
-    at.sidebar.text_input[0].input("no match").run()
-    assert not at.exception and "No results match" in at.info[0].value
-
-
-def test_results_page_hands_selected_bundle_to_trade_analysis(roots):
-    pytest.importorskip("streamlit")
-    from streamlit.testing.v1 import AppTest
-
-    equity = pd.Series([100.0, 102, 101], index=pd.date_range("2026-01-01", periods=3))
-    saved = bundle.save_run(
-        "older chosen run", equity, pd.DataFrame(columns=bundle.TRADE_COLUMNS), {"strategy": "a"}
-    )
-    bundle.save_run(
-        "newest run", equity, pd.DataFrame(columns=bundle.TRADE_COLUMNS), {"strategy": "b"}
-    )
-    app = Path(__file__).resolve().parents[1] / "src/horizon_trader/dashboard/nav.py"
-    at = AppTest.from_file(str(app), default_timeout=30).run()
-    next(s for s in at.selectbox if s.label == "Open result").set_value(
-        f"backtest:{saved.name}"
-    ).run()
-    next(b for b in at.button if b.label == "Open trade analysis").click().run()
-    assert not at.exception and at.title[0].value == "older chosen run"
-
-
 def test_test_fixtures_are_not_discovered_as_real_results(roots):
     _, data = roots
     run = data / "checks" / "actual_check"

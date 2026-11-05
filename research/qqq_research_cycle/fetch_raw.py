@@ -1,6 +1,6 @@
 """Freeze Yahoo raw/action inputs for the October 2026 research cycle only.
 
-Run: .venv/Scripts/python.exe research/cycle_2026_10_01/fetch_raw.py
+Run: .venv/Scripts/python.exe research/qqq_research_cycle/fetch_raw.py
 Never overwrites the repository's normal data/bars cache. Yahoo OHLC is split
 adjusted even with auto_adjust=False; actions allow reconstruction of contemporaneous
 share prices. Dividends and adjustments are preserved for audit, not silently used

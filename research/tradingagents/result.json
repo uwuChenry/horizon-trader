@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "id": "research:tradingagents",
+  "name": "TradingAgents (Xiao et al. 2024): a multi-agent LLM trading firm",
+  "kind": "note",
+  "status": "reference",
+  "verdict": "Good architecture (separate analysts, bull/bear debate, structured hand-offs), no evidence: 3 months, 3 stocks, no costs, weak baselines. We borrow the structure for the forecast journal and test it forward.",
+  "tags": [
+    "llm",
+    "agents",
+    "paper-audit"
+  ],
+  "updated": "2026-11-05",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ]
+}

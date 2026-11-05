@@ -1,8 +1,8 @@
 # Inverted ORB: fading the opening-range breakout
 
 Run 2026-09-27 with `uv run python -m horizon_trader.intraday.orb_inverted`. Code:
-`src/horizon_trader/intraday/orb_inverted.py`. Follows [ORB on Stocks in Play](orb_stocks_in_play.md)
-and [ORB experiments](orb_experiments.md).
+`src/horizon_trader/intraday/orb_inverted.py`. Follows [ORB on Stocks in Play](../orb_stocks_in_play/README.md)
+and [ORB experiments](../orb_experiments/README.md).
 
 **The question:** ORB loses on most days, so would doing the opposite win more often, with
 smaller gains?

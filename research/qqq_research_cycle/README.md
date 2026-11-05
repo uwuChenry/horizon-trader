@@ -361,13 +361,13 @@ offline once frozen inputs are present. `uv run --no-sync python` may replace th
 Windows interpreter path below.
 
 ```powershell
-.venv/Scripts/python.exe research/cycle_2026_10_01/reproduce_legacy.py
-.venv/Scripts/python.exe research/cycle_2026_10_01/prepare_inputs.py
+.venv/Scripts/python.exe research/qqq_research_cycle/reproduce_legacy.py
+.venv/Scripts/python.exe research/qqq_research_cycle/prepare_inputs.py
 .venv/Scripts/python.exe -m horizon_trader.backtest.research_cycle --stage develop
 .venv/Scripts/python.exe -m horizon_trader.backtest.research_cycle --stage validate
 .venv/Scripts/python.exe -m horizon_trader.backtest.research_cycle --stage confirm
-.venv/Scripts/python.exe research/cycle_2026_10_01/make_report.py
-.venv/Scripts/python.exe research/cycle_2026_10_01/verify_results.py
+.venv/Scripts/python.exe research/qqq_research_cycle/make_report.py
+.venv/Scripts/python.exe research/qqq_research_cycle/verify_results.py
 .venv/Scripts/python.exe -m pytest -q -p no:cacheprovider --basetemp data/tmp/cycle_verification
 ```
 

@@ -105,7 +105,7 @@ were changed and no orders were submitted.
 [verification](verification.json), [manifest](manifest.json).
 
 ```powershell
-.venv/Scripts/python.exe -m horizon_trader.intraday.orb_ema --candle-minutes 5 --exit-candle-minutes 15 --plan tiered --slippage 0.01 --output research/orb_ema_2026_10_02/exit15_tiered1c
-.venv/Scripts/python.exe research/orb_ema_2026_10_02/exit15_tiered1c/compare.py
+.venv/Scripts/python.exe -m horizon_trader.intraday.orb_ema --candle-minutes 5 --exit-candle-minutes 15 --plan tiered --slippage 0.01 --output research/orb_ema/exit15_tiered1c
+.venv/Scripts/python.exe research/orb_ema/exit15_tiered1c/compare.py
 .venv/Scripts/python.exe -m pytest tests/test_orb_ema.py tests/test_orb.py tests/test_ema_vwap.py -q -p no:cacheprovider --basetemp data/tmp/orb_ema_tests
 ```

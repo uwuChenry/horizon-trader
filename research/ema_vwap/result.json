@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "research:ema_vwap",
+  "name": "Two internet indicator rules: 5-minute 12-EMA and EMA9 × VWAP",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "12-EMA stop-and-reverse loses after costs; EMA9 x VWAP long-only passed on SPY only (1 of 16 tests). At $5k everything loses to the $0.35 minimum.",
+  "tags": [
+    "intraday",
+    "etf",
+    "indicators"
+  ],
+  "updated": "2026-10-01",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/intraday/ema_vwap.py"
+  ]
+}

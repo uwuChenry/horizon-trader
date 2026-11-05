@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "kind": "research",
-  "id": "research:portfolio_data_review_2026_10_01",
+  "id": "research:portfolio_data_review",
   "name": "Portfolio and data review",
+  "kind": "research",
+  "status": "reference",
+  "verdict": "Test a shared-account portfolio of the daily core, ORB and QQQ noise before buying another data feed.",
+  "tags": [
+    "portfolio",
+    "data"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "Descriptive portfolio blends, correlations, uncertainty and execution diagnostics. Synthetic blends are not shared-account execution replays.",
   "start": "2021-11-01",
   "end": "2026-09-24",

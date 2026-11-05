@@ -121,7 +121,7 @@ the 2021–2026 environment was weaker, not that the paper is wrong about 2016�
 - **Leveraged ETFs don't help.** TQQQ behaves like QQQ with more leverage; the 3x S&P ETFs
   are worse than SPY. The tight-stop version on 3x ETFs lost 50–60% a year.
 - The one intraday ETF strategy that did hold up is a different one: **QQQ noise-area
-  momentum** (see `research/strategy_survey.md` and `research/portfolio_mix.md`).
+  momentum** (see `research/strategy_survey/README.md` and `research/portfolio_mix/README.md`).
 
 ## Sources
 

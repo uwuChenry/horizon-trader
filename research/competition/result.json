@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "research:competition",
+  "name": "Investment club competition: October 7 to December 31, 2026",
+  "kind": "note",
+  "status": "idea",
+  "verdict": "Investment-club competition plan, 2026-10-07 to 2026-12-31, $5k: concentrated swings plus a capped option budget. The repo records no competition trades.",
+  "tags": [
+    "alpaca",
+    "llm",
+    "options",
+    "planning"
+  ],
+  "updated": "2026-11-05",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/agents/competition.py",
+    "src/horizon_trader/execution/alpaca_broker.py"
+  ]
+}

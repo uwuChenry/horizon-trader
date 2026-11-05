@@ -3,7 +3,7 @@
     uv run python -m horizon_trader.datasources.sec download  # first: SEC fundamentals + 10-K text
     uv run python -m horizon_trader.backtest.multifactor [--save]
 
-Pre-registered (2026-09-29, before any result was seen; write-up in research/multifactor.md):
+Pre-registered (2026-09-29, before any result was seen; write-up in research/multifactor/README.md):
   universe   each month-end, the 200 largest US companies by market cap on that date
              (Massive point-in-time caps, delisted included, one share class each), as in
              backtest/winners.py

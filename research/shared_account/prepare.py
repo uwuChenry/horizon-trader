@@ -16,7 +16,7 @@ from horizon_trader.datasources import massive
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = data_dir() / "shared_account_2026_10_01"
-SETTINGS = ROOT / "research/portfolio_data_review_2026_10_01/results/effective_daily_settings.json"
+SETTINGS = ROOT / "research/portfolio_data_review/results/effective_daily_settings.json"
 
 
 def raw_actions():

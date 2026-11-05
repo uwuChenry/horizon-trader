@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "research:llm_strategies_survey",
+  "name": "LLMs in trading strategies: what the evidence supports",
+  "kind": "note",
+  "status": "reference",
+  "verdict": "What the published evidence supports for LLMs in trading strategies.",
+  "tags": [
+    "llm",
+    "survey"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ]
+}

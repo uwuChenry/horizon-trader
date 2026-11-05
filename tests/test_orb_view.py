@@ -1,5 +1,4 @@
 from datetime import date
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -85,26 +84,26 @@ def test_size_trade_matches_the_backtest_accounting(orb_data):
             assert s["net $"] == pytest.approx(f["pnl"])
 
 
-def test_day_figure_draws_candles_range_box_and_trade(orb_data):
-    from horizon_trader.dashboard import orb_view as V
+def test_orb_api_day_and_chart(orb_data):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
 
-    t = V.load_trades("orb5_stop1_trades")
-    row = V.day_table(t, pd.Timestamp(DAY), 1).iloc[0]
-    b = V.session_bars(DAY, "WIN")
-    fig = V.day_figure(b, row, V.trade_path(row, b), "WIN")
-    kinds = [tr.type for tr in fig.data]
-    assert kinds.count("candlestick") == 1 and kinds.count("bar") == 1
-    names = " ".join(tr.name or "" for tr in fig.data)
-    assert "entry 09:" in names and "exit 16:00" in names and "stop 10.00" in names
-    assert any(s.type == "rect" for s in fig.layout.shapes)
+    from horizon_trader.dashboard import server
+    from horizon_trader.dashboard.routes import orb as R
 
-
-def test_orb_day_page_renders(orb_data):
-    pytest.importorskip("streamlit")
-    from streamlit.testing.v1 import AppTest
-
-    page = Path(__file__).resolve().parents[1] / "src/horizon_trader/dashboard/orb_day.py"
-    at = AppTest.from_file(str(page), default_timeout=60).run()
-    assert not at.exception
-    assert "ORB day" in at.title[0].value
-    assert any("Bought" in m.value for m in at.markdown)
+    R.trades.cache_clear()
+    R.day_bars.cache_clear()
+    c = TestClient(server.create_app())
+    meta = c.get("/api/orb/meta").json()
+    width = meta["widths"][0]["name"]
+    days = c.get(f"/api/orb/days?width={width}&top_n=2").json()
+    day = days["traded"][-1]["date"]
+    d = c.get(f"/api/orb/day?width={width}&date={day}&top_n=2").json()
+    assert d["summary"]["broke_out"] >= 1
+    ticker = d["candidates"]["rows"][0][1]
+    ch = c.get(f"/api/orb/chart?width={width}&date={day}&ticker={ticker}&top_n=2").json()
+    assert ch["candles"] and ch["path"]["or_high"] >= ch["path"]["or_low"]
+    if ch["path"]["triggered"]:
+        assert ch["sizing"]["shares"] > 0
+        # wall-clock seconds: the entry reads as New York time, after the 9:35 range end
+        assert ch["path"]["entry_time"] >= ch["or_end"]

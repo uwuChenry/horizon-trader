@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "kind": "research",
-  "id": "research:orb_ema_exit_diagnostics",
+  "id": "research:orb_ema/exit_diagnostics",
   "name": "ORB exit-path diagnostics",
+  "kind": "research",
+  "status": "reference",
+  "verdict": "EMA exits avoid some stop losses but surrender larger gains on others; reducing stop-outs alone is not a sufficient objective.",
+  "tags": [
+    "intraday",
+    "orb"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "Stop timing, exit subgroups, continuation, recovery and uncertainty on matched entries. Descriptive diagnostics retain their original cost and fill assumptions.",
   "start": "2021-10-22",
   "end": "2026-10-01",

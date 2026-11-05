@@ -1,4 +1,4 @@
-"""Data shaping and figures for the Holdings page (kept out of the page script so they're testable).
+"""Data shaping for the Holdings view (pure functions, so they're testable).
 
 Input tables come from result bundles (`bundle.Run.tables`):
     holdings  one row per (date, ticker) held: shares, price, value, weight (of equity)
@@ -9,12 +9,6 @@ Input tables come from result bundles (`bundle.Run.tables`):
 from __future__ import annotations
 
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-
-from horizon_trader.dashboard.charts import GRID, NEUTRAL, SERIES, style
-
-HELD, OTHER = SERIES[0], "rgba(137,135,129,0.45)"
 
 
 def snap(calendar: pd.DatetimeIndex, t) -> pd.Timestamp:
@@ -119,78 +113,3 @@ def positions_at(
     cols = ["name", "weight", "value", "shares", "price", "held since", "trading days held",
             "move since bought", "rank", "momentum"]  # fmt: skip
     return out[cols].sort_values("weight", ascending=False)
-
-
-# ---------------------------------------------------------------- figures
-
-
-def weights_figure(pos: pd.DataFrame, cash_weight: float) -> go.Figure:
-    """Horizontal bars of % of equity per holding, plus cash (gray), biggest at the top."""
-    labels = list(pos.index) + ["cash"]
-    values = list(pos["weight"]) + [cash_weight]
-    colors = [HELD] * len(pos) + [NEUTRAL]
-    fig = go.Figure(
-        go.Bar(
-            x=values,
-            y=labels,
-            orientation="h",
-            marker=dict(color=colors, cornerradius=4),
-            text=[f"{v:.1%}" for v in values],
-            textposition="outside",
-            hovertemplate="%{y}: %{x:.1%} of equity<extra></extra>",
-        )
-    )
-    fig.update_yaxes(autorange="reversed")
-    top = max([abs(v) for v in values] + [0.01])
-    fig.update_xaxes(
-        tickformat=".0%",
-        showgrid=True,
-        gridcolor=GRID,
-        range=[min(0.0, min(values) * 1.2), top * 1.2],
-    )  # room for labels
-    return style(
-        fig, max(260, 28 * len(labels) + 60), title="% of equity", hovermode="closest",
-        showlegend=False, bargap=0.25,
-    )  # fmt: skip
-
-
-def equity_figure(equity: pd.Series, benchmark: pd.Series | None, t: pd.Timestamp) -> go.Figure:
-    fig = go.Figure()
-    fig.add_scatter(x=equity.index, y=equity, name="strategy", line=dict(color=SERIES[0], width=2))
-    if benchmark is not None:
-        b = benchmark.reindex(equity.index).ffill().dropna()
-        if len(b):
-            fig.add_scatter(
-                x=b.index, y=b / b.iloc[0] * equity.iloc[0], name="SPY, same start",
-                line=dict(color=SERIES[1], width=2),
-            )  # fmt: skip
-    fig.add_vline(x=t, line=dict(color=NEUTRAL, width=1, dash="dot"))
-    fig.add_scatter(
-        x=[t], y=[equity.loc[t]], mode="markers", name="selected day",
-        marker=dict(size=10, color=SERIES[0], line=dict(width=2, color="white")),
-        hovertemplate="%{x|%Y-%m-%d}: $%{y:,.0f}<extra></extra>",
-    )  # fmt: skip
-    fig.update_yaxes(tickprefix="$", tickformat=",.0f")
-    return style(fig, 320, title="Equity ($5k start)")
-
-
-def timeline_figure(periods: pd.DataFrame, t: pd.Timestamp) -> go.Figure:
-    """Every holding period as a bar; periods covering t are highlighted."""
-    p = periods.copy()
-    p["state"] = ["held on selected day" if s <= t <= e else "other periods"
-                  for s, e in zip(p["start"], p["end"], strict=True)]  # fmt: skip
-    p["end_plot"] = p["end"] + pd.Timedelta(days=1)  # a one-day holding still shows
-    order = p.groupby("ticker")["start"].min().sort_values().index.tolist()
-    fig = px.timeline(
-        p, x_start="start", x_end="end_plot", y="ticker", color="state",
-        color_discrete_map={"held on selected day": HELD, "other periods": OTHER},
-        category_orders={"ticker": order, "state": ["held on selected day", "other periods"]},
-        hover_data={"start": "|%Y-%m-%d", "end": "|%Y-%m-%d", "end_plot": False, "state": False},
-    )  # fmt: skip
-    fig.add_vline(x=t, line=dict(color=NEUTRAL, width=1, dash="dot"))
-    fig.update_yaxes(title=None, tickfont=dict(size=10))
-    return style(
-        fig, max(300, 14 * len(order) + 90), title="Every holding period (first bought, top)",
-        hovermode="closest", margin=dict(l=10, r=10, t=80, b=10),
-        legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0, title=None),
-    )  # fmt: skip

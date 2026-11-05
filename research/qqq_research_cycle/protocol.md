@@ -125,5 +125,5 @@ These sources do not establish an edge for these particular ETF rules.
 Freeze inputs under `data/research_cycle_2026_10_01/`, record SHA256, source dates,
 package versions, config/code hashes and initial dirty worktree. Preserve all
 existing artifacts and live settings. Store compact tables, ledger, report,
-standalone curves and reproduction commands under `research/cycle_2026_10_01/`.
+standalone curves and reproduction commands under `research/qqq_research_cycle/`.
 No trades, paper orders, paid data or infrastructure actions are authorized.

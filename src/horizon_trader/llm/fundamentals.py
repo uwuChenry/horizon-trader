@@ -20,7 +20,7 @@ What Claude sees per company (all filed BEFORE the as-of date, nothing later):
 No prices, market caps or valuation multiples (following Lehner & Lopez-Lira 2026): the score
 is about the business, not whether the stock is cheap.
 
-Pre-registered (2026-10-01, before any score existed; write-up in research/llm_fundamentals.md):
+Pre-registered (2026-10-01, before any score existed; research/llm_fundamentals/README.md):
   signal     `score` (1-10); ties broken by the sum of the four sub-scores
   returns    from the close of the first trading day AFTER the as-of date; primary horizon
              21 trading days, secondary 63

@@ -2,8 +2,8 @@
 
 Written 2026-09-29, a summary of a Q&A session. No backtests here: this note explains why most
 "free money" isn't, what quant funds run instead, and what this repo can copy at $5k. The
-implementation plan is in [quant_reading_list.md](quant_reading_list.md); the results are in
-[multifactor.md](multifactor.md).
+implementation plan is in [quant_reading_list.md](../quant_reading_list/README.md); the results are in
+[multifactor.md](../multifactor/README.md).
 
 ## Prediction-market arbitrage (Polymarket vs Kalshi)
 
@@ -137,11 +137,11 @@ to data:
 
 So `backtest/multifactor.py` fixes equal weights in advance and runs a walk-forward ridge
 regression next to them as a pre-registered comparison. See
-[multifactor.md](multifactor.md) for how it did.
+[multifactor.md](../multifactor/README.md) for how it did.
 
 ## Suggested next steps (from the session)
 - A Kalshi/Polymarket gap logger (free APIs, records executable after-fee gaps and resolution
   wording) and a historical funding-rate check for cash-and-carry. Both measure before trading.
   Not started.
 - SEC fundamentals loader, multi-factor composite, Lazy Prices, risk-parity sleeve: built
-  2026-09-29. Results in [multifactor.md](multifactor.md) and below.
+  2026-09-29. Results in [multifactor.md](../multifactor/README.md) and below.

@@ -1,6 +1,6 @@
 """Causal, fixed-share competitor-pairs research engine; never submits orders.
 
-See research/pairs_2026_10_12/protocol.md. Signal prices are total-return adjusted;
+See research/pairs/protocol.md. Signal prices are total-return adjusted;
 execution prices and dividend cash flows are in historical, as-traded share units.
 """
 

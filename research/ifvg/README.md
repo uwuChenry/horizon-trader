@@ -66,8 +66,8 @@ Reproduce the test record with:
 ```bash
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_ifvg.py \
   tests/test_results_catalog.py tests/test_backtest.py tests/test_research_stats.py \
-  -q -p no:cacheprovider --junitxml=research/ifvg_2026_10_18/verification.xml
-python research/ifvg_2026_10_18/verify.py
+  -q -p no:cacheprovider --junitxml=research/ifvg/verification.xml
+python research/ifvg/verify.py
 ```
 
 The plugin-autoload setting isolates pytest from this machine's unrelated ROS

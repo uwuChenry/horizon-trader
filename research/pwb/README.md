@@ -121,7 +121,7 @@ The target is the Most Diversified Portfolio ([Choueifaty & Coignard 2008](https
   1. Subtract the risk-free rate when cash earns interest.
   2. Use a point-in-time universe.
   3. Fill only at prices that actually traded after the signal.
-- **Ideas still worth a cheap test here, as listed in the survey, not because of their PWB Sharpe:** the earnings announcement premium and return seasonalities (`research/strategy_survey.md`). Carry and short-vol premia are real but come with crash risk, and FX is outside this account's scope.
+- **Ideas still worth a cheap test here, as listed in the survey, not because of their PWB Sharpe:** the earnings announcement premium and return seasonalities (`research/strategy_survey/README.md`). Carry and short-vol premia are real but come with crash risk, and FX is outside this account's scope.
 
 ## Sources
 

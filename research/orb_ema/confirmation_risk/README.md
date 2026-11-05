@@ -199,7 +199,7 @@ settings were changed.
 
 ## Reproduction and verification
 
-Run `.venv\Scripts\python.exe research/orb_ema_2026_10_02/confirmation_risk/run.py`
+Run `.venv\Scripts\python.exe research/orb_ema/confirmation_risk/run.py`
 from the repository root. It reads only local frozen source/cache files.
 
 - The original and one-close rules reproduce **4,004 saved trades exactly**

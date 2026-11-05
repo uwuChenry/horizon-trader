@@ -43,16 +43,32 @@ uv run python -m horizon_trader.alphas.cli backtest research/alphas/classics.yam
 
 On a server, use `uv sync --no-dev` to keep the install lean.
 
-## Dashboard and results
+## Dashboard and research
 
-`uv run python -m horizon_trader.dashboard` opens the unified Results catalog:
-older backtests, current research studies, forward ledgers and saved test evidence.
-Research reports and their data links are browsable, including nested studies.
-New studies use a versioned `result.json` descriptor; existing backtests work unchanged.
-See [the results format and publishing guide](docs/results.md).
+```bash
+cd web && npm install && npm run build     # once (needs Node 20+), and after frontend changes
+uv run python -m horizon_trader.dashboard  # http://127.0.0.1:8501
+```
 
-Run `uv run python -m horizon_trader.results.check` to run pytest and save its results
-for the dashboard, including the tested code fingerprint and full output.
+A read-only web app (FastAPI + React): an overview of forward tests and job health, the research
+catalog, every saved backtest (trades, costs, holdings, in- vs out-of-sample), live/paper ledgers,
+the ORB day viewer and the forecast journal. For frontend work, run `npm run dev` in `web/` (port 5173, proxies the API).
+
+Every study lives in its own folder, `research/<slug>/`, with a `README.md` (verdict first) and a
+`result.json` (status, verdict, tags, period, artifacts). [research/README.md](research/README.md)
+is the generated index; regenerate it with `uv run python -m horizon_trader.results.index`.
+See [the results format guide](docs/results.md).
+
+## Forecast journal (LLM agents, forward test)
+
+```bash
+uv run python -m horizon_trader.agents.journal run   # weekdays ~15:30 ET; needs a Claude Code login
+```
+
+Each trading day an LLM team (market, news and earnings analysts, a bull/bear debate, a trader)
+writes down SPY/QQQ calls and option-trade specs. Code prices them from live quotes, opens an
+opposite "mirror" trade as the control, and scores everything after 5 and 20 days. It never
+places an order. Rules: [research/forecast_journal/protocol.md](research/forecast_journal/protocol.md).
 
 ## Layout
 
@@ -66,7 +82,8 @@ for the dashboard, including the tested code fingerprint and full output.
 | `src/horizon_trader/execution` | `Broker` protocol, paper simulator, rebalance → orders |
 | `src/horizon_trader/backtest` | vectorized screens and the daily simulator (reuses the live code) |
 | `src/horizon_trader/llm` | LLM scoring with timestamped outputs (forward-test only) |
-| `research/` | notebooks and replications of published papers |
+| `research/` | one folder per study: README, result.json, protocol, evidence |
+| `src/horizon_trader/dashboard`, `web/` | dashboard API (FastAPI) and frontend (React) |
 | `deploy/` | Dockerfile, compose placeholder, systemd timer |
 
 State (Parquet and SQLite files) lives in `./data`, or in `$HT_DATA_DIR` if set. It is git-ignored.

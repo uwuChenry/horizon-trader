@@ -2,11 +2,8 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("streamlit")
-from streamlit.testing.v1 import AppTest  # noqa: E402
-
-from horizon_trader import config  # noqa: E402
-from horizon_trader.dashboard import notes as N  # noqa: E402
+from horizon_trader import config
+from horizon_trader.dashboard import notes as N
 
 DASH = Path(__file__).resolve().parents[1] / "src/horizon_trader/dashboard"
 
@@ -51,57 +48,6 @@ def test_papers_dedupes_urls_and_records_citing_notes(notes):
     assert row["title"] == "Martineau (2022), Rest in Peace PEAD, CFR"  # most descriptive label
     assert row["cited in"] == "Strategy survey" and row["source"] == "papers.ssrn.com"
     assert p.loc["https://arxiv.org/abs/2304.07619", "cited in"] == "b llm"
-
-
-def test_research_page_renders_notes_and_papers(notes):
-    at = AppTest.from_file(str(DASH / "research.py"), default_timeout=30).run()
-    assert not at.exception, at.exception
-    assert set(at.sidebar.radio[0].options) == {"Strategy survey", "b llm"}
-    at.sidebar.radio[0].set_value(notes / "a_survey.md").run()
-    assert "PEAD is dead" in " ".join(m.value for m in at.markdown)
-    assert len(at.tabs) == 2 and len(at.dataframe[0].value) == 3
-
-
-def test_research_search_filters_notes_and_papers(notes):
-    at = AppTest.from_file(str(DASH / "research.py"), default_timeout=30).run()
-    at.sidebar.text_input[0].input("lopez").run()
-    assert at.sidebar.radio[0].options == ["b llm"]
-    assert len(at.dataframe[0].value) == 1
-    at.sidebar.text_input[0].input("nothing matches").run()
-    assert not at.exception and "No research notes mention" in at.info[0].value
-
-
-def test_navigation_entry_point_runs(notes, monkeypatch):
-    monkeypatch.setenv("HT_DATA_DIR", str(notes.parent))  # empty catalog shows a hint
-    at = AppTest.from_file(str(DASH / "nav.py"), default_timeout=60).run()
-    assert not at.exception, at.exception
-    at.switch_page(str(DASH / "research.py")).run()
-    assert not at.exception, at.exception
-    assert at.title[0].value == "Research"
-
-
-def test_nested_reports_links_and_literal_search(notes):
-    nested = notes / "study" / "followup"
-    nested.mkdir(parents=True)
-    report = nested / "report.md"
-    report.write_text(
-        "# Follow-up\n[metrics](metrics.csv)\n[later](later.md)\n[brackets]", encoding="utf-8"
-    )
-    (nested / "later.md").write_text("# Later\nDetails", encoding="utf-8")
-    (nested / "metrics.csv").write_text("variant,return\nx,0.1\n", encoding="utf-8")
-    assert report in N.list_notes(notes)
-    rendered = N.linked_markdown(report, notes)
-    assert "research?note=study%2Ffollowup%2Flater.md" in rendered
-    assert "artifact=study%2Ffollowup%2Fmetrics.csv" in rendered
-    at = AppTest.from_file(str(DASH / "research.py"), default_timeout=30)
-    at.query_params["note"] = "study/followup/report.md"
-    at.query_params["artifact"] = "study/followup/metrics.csv"
-    at.run()
-    assert not at.exception
-    assert "study/followup/report.md" in at.caption[0].value
-    assert at.dataframe[0].value.iloc[0]["variant"] == "x"
-    at.sidebar.text_input[0].input("[brackets]").run()
-    assert not at.exception and len(at.sidebar.radio[0].options) == 1
 
 
 def test_local_links_do_not_offer_files_outside_research(notes):

@@ -1,6 +1,6 @@
 """Read-only metadata inventory; never invokes data providers or a broker.
 
-Run: .venv/Scripts/python.exe research/portfolio_data_review_2026_10_01/inventory.py
+Run: .venv/Scripts/python.exe research/portfolio_data_review/inventory.py
 Writes aggregate metadata only beside this script. No account IDs or credentials.
 """
 

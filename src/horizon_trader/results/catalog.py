@@ -17,7 +17,23 @@ import pandas as pd
 from horizon_trader import config
 
 SUFFIXES = {".csv", ".parquet", ".json", ".jsonl", ".md", ".html", ".xml", ".txt"}
-KINDS = {"backtest", "research", "shadow", "paper", "live", "forward", "observations", "tests"}
+KINDS = {
+    "backtest",
+    "research",
+    "note",
+    "shadow",
+    "paper",
+    "live",
+    "forward",
+    "observations",
+    "tests",
+}
+# Study lifecycle, in display order. Every research/<slug>/result.json carries one.
+STUDY_KINDS = {"research", "note", "forward"}
+STATUSES = ["core", "candidate", "running", "inconclusive", "idea", "reference", "dead"]
+# Written by a person (or Claude) about the study, never by the script that produced the numbers:
+# re-running an experiment keeps them.
+CURATED = ("id", "name", "status", "verdict", "tags", "report", "code", "updated")
 
 
 @dataclass(frozen=True)
@@ -39,6 +55,25 @@ class Result:
     end: str = ""
     bundle_id: str = ""
     metadata: dict = field(default_factory=dict)
+
+    @property
+    def status(self) -> str:
+        return self.metadata.get("status", "")
+
+    @property
+    def verdict(self) -> str:
+        return self.metadata.get("verdict", "")
+
+    @property
+    def tags(self) -> list[str]:
+        return list(self.metadata.get("tags", []))
+
+    @property
+    def report(self) -> Path | None:
+        """The study's entry document: manifest "report", else README.md, else report.md."""
+        folder = self.source.parent
+        names = [self.metadata.get("report"), "README.md", "report.md"]
+        return next((folder / n for n in names if n and (folder / n).is_file()), None)
 
     @property
     def updated(self) -> str:
@@ -92,6 +127,10 @@ def load_manifest(path: Path, data: Path) -> Result:
         raise ValueError("A result requires string id, name and kind")
     if info["kind"] not in KINDS:
         raise ValueError("A result requires id, name and a supported kind")
+    if info["kind"] in STUDY_KINDS and "status" in info and info["status"] not in STATUSES:
+        raise ValueError(f"Unknown status {info['status']!r}; use one of {STATUSES}")
+    if not isinstance(info.get("tags", []), list):
+        raise ValueError("tags must be a list")
     if not isinstance(info.get("include", []), list) or not isinstance(
         info.get("artifacts", []), list
     ):
@@ -131,7 +170,18 @@ def load_manifest(path: Path, data: Path) -> Result:
 
 
 def write_manifest(path: Path, **info) -> None:
-    """Publish a completed result descriptor atomically, after its artifacts exist."""
+    """Publish a completed result descriptor atomically, after its artifacts exist.
+
+    Re-running a study keeps the curated fields (status, verdict, tags, ...) already in its
+    manifest, so a script can refresh the numbers without erasing the write-up.
+    """
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            existing = {}
+        if isinstance(existing, dict):
+            info.update({k: existing[k] for k in CURATED if k in existing})
     payload = {"schema_version": 1, **info}
     if payload.get("kind") not in KINDS or not payload.get("id") or not payload.get("name"):
         raise ValueError("A result requires id, name and a supported kind")

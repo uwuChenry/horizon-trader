@@ -182,20 +182,20 @@ be closed; the exact cutoff time remains pending organizer clarification.
 
 ## Existing repository evidence and limitations
 
-- [Stock momentum](../winners_momentum.md): the point-in-time top-10 study reported
+- [Stock momentum](../winners_momentum/README.md): the point-in-time top-10 study reported
   45.4% annualized net return, a roughly 40% drawdown and a 27% loss in July 2026.
   It uses fractional sizing and a short, favorable 2022-2026 sample. It does not
   validate concentrated stock picks, options, or a particular three-month return.
-- [ORB follow-up](../orb_ema_2026_10_02/exit15_tiered1c/report.md): the stop-or-close
+- [ORB follow-up](../orb_ema/exit15_tiered1c/README.md): the stop-or-close
   baseline outperformed the EMA exits under stated Tiered/1-cent assumptions.
   Costs, live fills and monitoring remain material; intraday is not the initial plan.
-- [Shared account study](../shared_account_2026_10_01/report.md): costs, whole shares
+- [Shared account study](../shared_account/README.md): costs, whole shares
   and common buying power changed results substantially. No allocation established
   its original objective across required periods and stresses.
-- [QQQ research cycle](../cycle_2026_10_01/report.md): no candidate met that cycle's
+- [QQQ research cycle](../qqq_research_cycle/README.md): no candidate met that cycle's
   combined return/drawdown objective. Its conservative objective differs from this
   contest; rejected results must not be relabeled successful tournament evidence.
-- [Derivative data review](../portfolio_data_review_2026_10_01/vendor_futures_options.md):
+- [Derivative data review](../portfolio_data_review/vendor_futures_options.md):
   data requirements were researched; this is not a validated options/futures strategy.
 - The current broker adapter constructs stock contracts. Its existing paper-only
   guard does not establish derivatives support. The ledger documentation describes
@@ -227,6 +227,32 @@ be closed; the exact cutoff time remains pending organizer clarification.
    P&L and leaderboard tracking to the dashboard only when implementing the plan.
    Begin with manually reviewed simulated orders; automation requires separate
    derivatives handling, reconciliation and operational validation.
+
+## AI competition account on Alpaca (built 2026-11-05)
+
+Owner's decision (2026-11-05): the AI entry follows the forecast journal
+([research/forecast_journal](../forecast_journal/README.md)) instead of getting its own trader,
+at 2.5x the journal's sizing. `agents/competition.py` executes; the journal decides and stays
+untouched, so its pre-registered test (prompts, rules, mirrors) is unchanged. The journal's
+protocol only sends ideas to Alpaca after an ideas PASS at 60+ days, which falls after
+December 31; this account is therefore a **separate experiment** and is reported separately,
+not as evidence for or against the journal.
+
+| Rule | Value |
+|---|---|
+| What is traded | Journal ideas only, never the mirrors; opened only on the idea's decision date |
+| Option sizing | $375 debit per idea, $1,500 open debit in total (journal: $150 / $600) |
+| Shares sizing | $1,500 per idea, $3,000 open in total, fractional shares |
+| Entry | Day limit order at the current ask (spreads: one multi-leg order at the net debit); unfilled = missed, never retried |
+| Exit | Market orders, short leg first: when the journal closes, one trading day before expiry (no exercise or assignment), and everything from 2026-12-28 |
+| No new ideas | after 2026-12-23, or after 15:57 ET |
+| Guards | paper keys only, kill switch (`data/live/KILL`), same account as the first run, first run needs $1k-$10k equity, positions must reconcile, no new orders while one of ours is working |
+
+Records: `data/live/competition_ai_paper/` (equity, fills with Alpaca's price next to the
+journal's modeled price, `follow.json` with every idea's status and reason). Limits: quotes come
+from Alpaca's free indicative options feed and IEX, and paper fills are simulated, so the fill
+comparison is an execution check, not a measurement of live costs. The journal sizes for a $10k
+hypothetical account, so the 2.5x scaling is a sizing choice, not something the journal tested.
 
 ## Official references checked October 7, 2026
 

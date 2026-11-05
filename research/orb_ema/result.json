@@ -1,8 +1,16 @@
 {
   "schema_version": 1,
-  "kind": "research",
-  "id": "research:orb_ema_2026_10_02",
+  "id": "research:orb_ema",
   "name": "ORB with 5-minute EMA",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "Replacing ORB's hold-to-close exit with 12-EMA exits weakens it at every stop width and cost case; 15-minute EMA exits are better than 5-minute but still trail ORB.",
+  "tags": [
+    "intraday",
+    "orb"
+  ],
+  "updated": "2026-11-04",
+  "report": "README.md",
   "description": "Original 5-minute EMA entry/exit experiments across stop widths and cost cases. Earlier assumptions are preserved; see the separate Tiered/1c follow-up for the later cost convention.",
   "start": "2021-10-22",
   "end": "2026-10-01",
@@ -17,5 +25,8 @@
       "role": "trades",
       "label": "All 5-minute EMA trade paths"
     }
+  ],
+  "code": [
+    "src/horizon_trader/intraday/orb_ema.py"
   ]
 }

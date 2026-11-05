@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "research:portfolio_mix",
+  "name": "Combining strategies: the daily book plus intraday sleeves",
+  "kind": "research",
+  "status": "candidate",
+  "verdict": "Intraday sleeves are ~uncorrelated with the daily book. Overlaying them on one margin account lifts Sharpe (0.91 -> 1.00 with ORB); splitting $5k into pots hurts.",
+  "tags": [
+    "portfolio",
+    "intraday",
+    "daily"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/backtest/mix.py"
+  ]
+}

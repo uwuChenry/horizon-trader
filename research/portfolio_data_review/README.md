@@ -7,11 +7,11 @@ that improves the whole portfolio after costs. However, the existing combined
 returns have not been reproduced in a single account with shared positions,
 minimum commissions and margin limits. That is the highest-value next experiment.
 
-This review reads [the roadmap](../roadmap.md), [CLAUDE.md](../../CLAUDE.md), prior
+This review reads [the roadmap](../roadmap/README.md), [CLAUDE.md](../../CLAUDE.md), prior
 experiment notes and saved results; inventories the actual caches; replays existing
 strategies; and checks current data products against the owner's **under $100/month,
 occasional one-time purchase** budget. It supplements the completed
-[first research cycle](../cycle_2026_10_01/report.md), whose daily ETF candidates did
+[first research cycle](../qqq_research_cycle/README.md), whose daily ETF candidates did
 not satisfy both objectives. That negative finding does not establish that leverage
 on QQQ is the only useful research direction.
 
@@ -285,9 +285,9 @@ promotion to a proven market-beating strategy.
 Run from repository root with the existing environment and local caches:
 
 ```powershell
-.venv\Scripts\python.exe research/portfolio_data_review_2026_10_01/inventory.py
-.venv\Scripts\python.exe research/portfolio_data_review_2026_10_01/analyze_portfolio.py
-.venv\Scripts\ruff.exe check research/portfolio_data_review_2026_10_01
+.venv\Scripts\python.exe research/portfolio_data_review/inventory.py
+.venv\Scripts\python.exe research/portfolio_data_review/analyze_portfolio.py
+.venv\Scripts\ruff.exe check research/portfolio_data_review
 ```
 
 Artifacts: [diagnostic conventions](diagnostic_notes.md),

@@ -4,7 +4,7 @@ Where the research stands, what to test next, and which data would improve the s
 Detailed results live in the notes linked below. `CLAUDE.md` has the full evidence table.
 
 **Portfolio/data review update (2026-10-01):** see the
-[new review](portfolio_data_review_2026_10_01/review.md) and the dated addendum at the
+[new review](../portfolio_data_review/README.md) and the dated addendum at the
 end of this file. They update the priorities and correct the earnings-calendar,
 data-retention and combined-Sharpe assumptions below. Earlier notes are preserved
 as the research record.
@@ -17,16 +17,16 @@ as the research record.
 |---|---|---|
 | Vol-managed SPY | Most robust result: Sharpe 0.66-0.80 across the parameter grid, 1.00 out-of-sample from 2013 | Core |
 | ETF 12-1 momentum | Sharpe 0.76, but only the 12-month lookback survives | Core |
-| Risk parity | Sharpe 0.74, only 0.59 correlated with momentum ([risk_parity.md](risk_parity.md)) | Tested replacement for trend, not switched on |
-| ORB top-1, stop-limit | Sharpe ~0.72 at $5k, about 0 correlation to the book ([orb_experiments.md](orb_experiments.md)) | Paper-trade candidate |
-| QQQ noise-area momentum | Held up after publication, t = 2.0 ([strategy_survey.md](strategy_survey.md)) | Paper-trade candidate, but chosen after SPY failed |
+| Risk parity | Sharpe 0.74, only 0.59 correlated with momentum ([risk_parity.md](../risk_parity/README.md)) | Tested replacement for trend, not switched on |
+| ORB top-1, stop-limit | Sharpe ~0.72 at $5k, about 0 correlation to the book ([orb_experiments.md](../orb_experiments/README.md)) | Paper-trade candidate |
+| QQQ noise-area momentum | Held up after publication, t = 2.0 ([strategy_survey.md](../strategy_survey/README.md)) | Paper-trade candidate, but chosen after SPY failed |
 | Combined book | Sharpe 0.83, -12% max drawdown | Lower return than SPY (6.5% vs 11.3%), much smaller drawdowns |
 
-**What's dead:** classic indicators (MACD, EMA, RSI(2); [ema_vwap.md](ema_vwap.md)), last-half-hour
-momentum, gold vs dollar ([gold_dollar.md](gold_dollar.md)), ETF ORB ([etf_orb.md](etf_orb.md)),
-copying Congress ([congress.md](congress.md)), the multi-factor composite
-([multifactor.md](multifactor.md)), LLM-mined formulas, and every parameter-tuned ORB variant
-([orb_parameter_grid.md](orb_parameter_grid.md)).
+**What's dead:** classic indicators (MACD, EMA, RSI(2); [ema_vwap.md](../ema_vwap/README.md)), last-half-hour
+momentum, gold vs dollar ([gold_dollar.md](../gold_dollar/README.md)), ETF ORB ([etf_orb.md](../etf_orb/README.md)),
+copying Congress ([congress.md](../congress/README.md)), the multi-factor composite
+([multifactor.md](../multifactor/README.md)), LLM-mined formulas, and every parameter-tuned ORB variant
+([orb_parameter_grid.md](../orb_parameter_grid/README.md)).
 
 **The honest diagnosis:** no real stock-picking alpha yet. Nothing has cleared t > 2 in its
 claimed direction. What we have is cheap, diversified exposure to known premia, plus one or two
@@ -58,7 +58,7 @@ So the highest-value next step is **out-of-sample data**, not idea number 50.
    `congress/event_study` almost unchanged. Expect a weaker effect in large caps.
 3. **Earnings announcement premium**
    ([Frazzini & Lamont 2007](https://papers.ssrn.com/abstract=986940)). Ranked #4 in
-   [strategy_survey.md](strategy_survey.md) and never tested. Point-in-time announcement dates
+   [strategy_survey.md](../strategy_survey/README.md) and never tested. Point-in-time announcement dates
    can come from the acceptance timestamps on 8-K Item 2.02 filings, which we can already
    download. Use only dates known in advance. About 12 trades a year, so costs barely matter.
 4. **Risk-managed momentum**
@@ -86,7 +86,7 @@ So the highest-value next step is **out-of-sample data**, not idea number 50.
 
 **Skip:** daily news sentiment, LLM trading agents, time-series foundation models, S&P inclusion
 effects, pre-FOMC drift and turn-of-month. Already documented as dead in
-[strategy_survey.md](strategy_survey.md) and [llm_strategies_survey.md](llm_strategies_survey.md).
+[strategy_survey.md](../strategy_survey/README.md) and [llm_strategies_survey.md](../llm_strategies_survey/README.md).
 
 **Portfolio-level point:** the owner's ~$100k long-term account is ~63% semis. A $5k strategy
 that's uncorrelated to semis is worth more than one with a slightly higher Sharpe. That favours
@@ -124,7 +124,7 @@ round trip.
   intraday margin and pattern-day-trader behaviour only show up at the real size.
 - All strategies share one account, with an IBKR `orderRef` tag per strategy and one ledger
   each; splitting $5k into separate accounts hurts the intraday sleeves
-  ([portfolio_mix.md](portfolio_mix.md)).
+  ([portfolio_mix.md](../portfolio_mix/README.md)).
 - Market data: subscriber status switched from Professional (IBKR's default) to
   Non-Professional. Subscribed to the US Securities Snapshot and Futures Value Bundle
   ($10/month, waived at $30 of monthly commissions) and the US Equity and Options Add-On
@@ -144,7 +144,7 @@ round trip.
 ## Portfolio and data addendum (2026-10-01)
 
 The owner's budget is **under $100/month, with occasional one-time purchases**.
-The [completed portfolio review](portfolio_data_review_2026_10_01/review.md)
+The [completed portfolio review](../portfolio_data_review/README.md)
 replayed the existing strategies, audited the actual files and checked official
 data-product documentation. Reproduction commands, a full experiment ledger,
 source hashes and offline figures are saved with it.
@@ -203,9 +203,9 @@ Sharpe above one or completion of the QQQ return/drawdown objective.
   alternative. It motivates testing portfolio complementarity with proper accounting.
 
 Official price/coverage/licensing links and limitations are in the
-[review](portfolio_data_review_2026_10_01/review.md) and
-[vendor note](portfolio_data_review_2026_10_01/vendor_futures_options.md).
-The [inventory](portfolio_data_review_2026_10_01/local_data_inventory.md) records
+[review](../portfolio_data_review/README.md) and
+[vendor note](../portfolio_data_review/vendor_futures_options.md).
+The [inventory](../portfolio_data_review/local_data_inventory.md) records
 1,253 local minute/daily dates, 60 monthly point-in-time universe dates, selected
 second-bar windows rather than quotes, and no dedicated futures/options dataset.
 No subscriptions or live trading settings were changed by this review.

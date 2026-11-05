@@ -3,7 +3,7 @@
     uv run python -m horizon_trader.intraday.orb_live run [--what-if]   # start before 9:30 ET
     uv run python -m horizon_trader.intraday.orb_live sync              # after the close
 
-The rules are the baseline in research/orb_experiments.md, unchanged: rank stocks by
+The rules are the baseline in research/orb_experiments/README.md, unchanged: rank stocks by
 first-5-minute volume / its 14-day mean, apply the paper's filters (open > $5, average volume
 >= 1M, ATR > $0.50, relvol >= 1, a non-flat candle), take the top 1, enter on a break of the
 opening range in the candle's direction with a stop-limit at the trigger price, stop 1 ATR

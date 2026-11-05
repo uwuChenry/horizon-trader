@@ -2,7 +2,7 @@
 
 Run 2026-09-25 with `uv run python -m horizon_trader.intraday.orb_grid`. Code:
 `src/horizon_trader/intraday/orb_grid.py`. Raw results (3,840 rows):
-`data/results/orb_grid.parquet`. Follows [ORB experiments](orb_experiments.md).
+`data/results/orb_grid.parquet`. Follows [ORB experiments](../orb_experiments/README.md).
 
 ## Answer first
 

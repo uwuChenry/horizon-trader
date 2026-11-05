@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "research:how_it_works",
+  "name": "How the system works: the daily book, QQQ noise, and execution",
+  "kind": "note",
+  "status": "reference",
+  "verdict": "Plain-language walkthrough of the daily book, QQQ noise momentum and execution.",
+  "tags": [
+    "daily",
+    "execution"
+  ],
+  "updated": "2026-09-26",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ]
+}

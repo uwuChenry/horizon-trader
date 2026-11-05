@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:congress",
+  "name": "Copy-trading Congress: does buying what members disclose beat SPY?",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "Buying every disclosed purchase after filing: 6.5% CAGR vs SPY 12.4% (alpha -6.7%/yr). Senate buys and $250k+ buys are hints for a pre-registered retest.",
+  "tags": [
+    "stocks",
+    "events"
+  ],
+  "updated": "2026-09-28",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/congress"
+  ]
+}

@@ -83,6 +83,6 @@ configured model runtime. A conversation alone is not an unattended trading
 process. Log model/runtime versions and keep all runtime/API spending separate
 from simulated account capital.
 
-The existing [competition plan](plan.md) remains a proposed strategy, not a proven
-optimal portfolio. Review [execution realism](../execution_realism_2026_10_07.md)
+The existing [competition plan](README.md) remains a proposed strategy, not a proven
+optimal portfolio. Review [execution realism](../execution_realism/README.md)
 before treating broker paper fills as evidence of live IBKR performance.

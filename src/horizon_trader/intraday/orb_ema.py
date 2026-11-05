@@ -1,4 +1,4 @@
-"""Bounded ORB + EMA experiment. See research/orb_ema_2026_10_02/protocol.md.
+"""Bounded ORB + EMA experiment. See research/orb_ema/protocol.md.
 
     python -m horizon_trader.intraday.orb_ema
 
@@ -444,7 +444,7 @@ def main():
     )
     args = parser.parse_args()
     suffix = f"_confirm{args.exit_confirmations}" if args.exit_confirmations > 1 else ""
-    output = args.output or Path("research/orb_ema_2026_10_02") / (
+    output = args.output or Path("research/orb_ema") / (
         f"exit{args.exit_candle_minutes}_{args.plan}{100 * args.slippage:g}c{suffix}"
     )
     run(

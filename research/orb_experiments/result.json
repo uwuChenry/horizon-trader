@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "research:orb_experiments",
+  "name": "ORB experiments: what we tested and what we learned",
+  "kind": "research",
+  "status": "candidate",
+  "verdict": "Best realistic ORB: top-1, 1-ATR stop, stop-limit entry, Tiered. $5k: 12.2% CAGR, Sharpe 0.72, -22% DD, ~0 correlation to the book. Paper-trade before believing.",
+  "tags": [
+    "intraday",
+    "orb",
+    "stocks"
+  ],
+  "updated": "2026-10-05",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/intraday/orb.py",
+    "src/horizon_trader/intraday/orb_live.py"
+  ]
+}

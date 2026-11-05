@@ -187,7 +187,7 @@ winner R, net expectancy and tail participation against the frozen control.
 
 Entry quality and execution remain separate research questions. Higher relative
 volume and entry cutoffs already appeared in the
-[480-configuration study](../../orb_parameter_grid.md), where the configuration
+[480-configuration study](../../orb_parameter_grid/README.md), where the configuration
 chosen on 2021-23 underperformed the baseline in the later period in all eight
 cost/account scenarios. Repeating optimization on seen data can fit noise;
 [Bailey et al., *The Probability of Backtest Overfitting*](https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf)
@@ -208,6 +208,6 @@ tests pass** in total, and Ruff passes. Existing strategy rules/results were not
 changed and no orders were sent.
 
 ```powershell
-.venv/Scripts/python.exe research/orb_ema_2026_10_02/exit_diagnostics/analyze.py
+.venv/Scripts/python.exe research/orb_ema/exit_diagnostics/analyze.py
 .venv/Scripts/python.exe -m pytest tests/test_orb_exit_diagnostics.py tests/test_orb_ema.py tests/test_orb.py tests/test_ema_vwap.py -q -p no:cacheprovider --basetemp data/tmp/orb_exit_diagnostics_tests
 ```

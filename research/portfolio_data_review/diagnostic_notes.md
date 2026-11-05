@@ -7,7 +7,7 @@ it does not establish that a tradeable combination has Sharpe above one.
 ## Reproduction and scope
 
 ```powershell
-.venv\Scripts\python.exe research/portfolio_data_review_2026_10_01/analyze_portfolio.py
+.venv\Scripts\python.exe research/portfolio_data_review/analyze_portfolio.py
 ```
 
 The script reads local caches and saved bundles directly. It makes no network

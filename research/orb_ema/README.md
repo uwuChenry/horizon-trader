@@ -1,6 +1,6 @@
 # ORB plus 12-EMA momentum management (2026-10-02)
 
-**2026-10-03 follow-up:** [two-close confirmation, narrower stops and sizing](orb_ema_2026_10_02/confirmation_risk/report.md).
+**2026-10-03 follow-up:** [two-close confirmation, narrower stops and sizing](confirmation_risk/README.md).
 With the same entries, Tiered/1c costs and 1% risk, waiting for two adverse
 15-minute EMA closes lifts 1-ATR CAGR from 4.42% to **6.07%**, versus **16.82%**
 for original ORB. Tightening the two-close stop to **0.5 daily ATR** raises
@@ -9,7 +9,7 @@ to 2% at that narrower stop produces **-26.98% CAGR and 85.30% drawdown**.
 Raising the 2x cap to 4x has little effect because risk-based sizing usually
 binds first. All 24 configurations are retained; no operational settings changed.
 
-**Exit-path diagnosis:** [stop timing and post-exit continuation](orb_ema_2026_10_02/exit_diagnostics/report.md)
+**Exit-path diagnosis:** [stop timing and post-exit continuation](exit_diagnostics/README.md)
 on the same 1,001 entries. Original ORB stops 31.5% of trades, versus 17.7% with
 15-minute EMA exits. Among those 654 EMA exits, 37.6% later move another 0.5R
 before the original stop, and holding finishes better after costs 49.8% of the
@@ -21,7 +21,7 @@ stop occurs a median 32 minutes after entry. No new exit rules were fitted.
 the exit-only version improves from **-3.27%** CAGR with 5-minute exits to
 **+4.42%** with 15-minute exits. The unchanged ORB control returns **16.82%**
 under those same costs. All 21,970 entries across the grid match the original run.
-See the [Tiered/1c follow-up](orb_ema_2026_10_02/exit15_tiered1c/report.md).
+See the [Tiered/1c follow-up](exit15_tiered1c/README.md).
 These are the default cost assumptions for subsequent ORB research.
 
 ## First experiment (earlier cost assumptions)
@@ -29,7 +29,7 @@ These are the default cost assumptions for subsequent ORB research.
 The owner proposed a 12-EMA direction/exit rule on 5-minute candles with a 1-ATR
 stop, plus stop-width experiments. The ATR is the existing prior 14-day daily ATR.
 
-The [completed report](orb_ema_2026_10_02/report.md) compares ORB hold-to-close,
+The [completed report](report.md) compares ORB hold-to-close,
 the same entries with EMA exits, range-break close plus EMA confirmation, and
 EMA direction on the ORB-selected stock. All use one trade/day and completed
 signals filled at the next open.
@@ -46,6 +46,6 @@ cut large winners. The tested rules do not justify replacing the baseline exit.
 No live/paper settings were changed.
 
 Code: `src/horizon_trader/intraday/orb_ema.py`.
-[Frozen protocol](orb_ema_2026_10_02/protocol.md),
-[all metrics](orb_ema_2026_10_02/metrics.csv),
-[verification](orb_ema_2026_10_02/verification.json).
+[Frozen protocol](protocol.md),
+[all metrics](metrics.csv),
+[verification](verification.json).

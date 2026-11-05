@@ -112,9 +112,7 @@ def test_delayed_orb_uses_unfilled_candidates_and_resimulates_exit():
 
     import numpy as np
 
-    module = runpy.run_path(
-        str(Path(__file__).parents[1] / "research/shared_account_2026_10_01/replay.py")
-    )
+    module = runpy.run_path(str(Path(__file__).parents[1] / "research/shared_account/replay.py"))
     inputs = module["Inputs"].__new__(module["Inputs"])
     day = pd.Timestamp("2024-01-02")
     inputs.events = {}
@@ -138,9 +136,7 @@ def test_historical_share_basis_and_split_day_dividend():
     import runpy
     from pathlib import Path
 
-    module = runpy.run_path(
-        str(Path(__file__).parents[1] / "research/shared_account_2026_10_01/replay.py")
-    )
+    module = runpy.run_path(str(Path(__file__).parents[1] / "research/shared_account/replay.py"))
     frame = pd.DataFrame(
         {
             "Open": [50.0, 50.0],

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "research:quant_reading_list",
+  "name": "How mid-frequency quant funds make money, and a reading list",
+  "kind": "note",
+  "status": "reference",
+  "verdict": "How mid-frequency quant funds make money, and a reading list.",
+  "tags": [
+    "survey"
+  ],
+  "updated": "2026-10-01",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ]
+}

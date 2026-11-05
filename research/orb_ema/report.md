@@ -110,8 +110,8 @@ historical subsamples, not untouched out-of-sample evidence.
 No execution settings or scheduled tasks were changed, and no orders were sent.
 
 ```powershell
-.venv/Scripts/python.exe -m horizon_trader.intraday.orb_ema --exit-candle-minutes 5 --legacy-costs --output research/orb_ema_2026_10_02
-.venv/Scripts/python.exe research/orb_ema_2026_10_02/verify.py
+.venv/Scripts/python.exe -m horizon_trader.intraday.orb_ema --exit-candle-minutes 5 --legacy-costs --output research/orb_ema
+.venv/Scripts/python.exe research/orb_ema/verify.py
 .venv/Scripts/python.exe -m pytest tests/test_orb_ema.py tests/test_orb.py tests/test_ema_vwap.py -q -p no:cacheprovider --basetemp data/tmp/orb_ema_tests
 ```
 

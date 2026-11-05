@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "research:forecast_journal",
+  "name": "Forecast journal: an LLM analyst team, scored forward",
+  "kind": "forward",
+  "status": "idea",
+  "verdict": "Built 2026-11-05, first run pending. Daily SPY/QQQ calls and option-trade specs from an analyst/debate/trader team, scored after 5 and 20 days against always-up and mirror trades. No orders.",
+  "tags": [
+    "llm",
+    "agents",
+    "options",
+    "macro"
+  ],
+  "updated": "2026-11-05",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/agents/journal.py",
+    "src/horizon_trader/agents/book.py",
+    "src/horizon_trader/agents/market.py",
+    "src/horizon_trader/agents/prompts.py"
+  ]
+}

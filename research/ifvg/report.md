@@ -1,7 +1,7 @@
 # IFVG strategy backtest
 
 **Result: all 12 IFVG configurations lost after costs over the full period.**
-Read the [findings and cost breakdown](findings.md) and [verification](verification.json).
+Read the [findings and cost breakdown](README.md) and [verification](verification.json).
 
 Data: 2021-10-04–2026-09-24, 1,248 common complete
 sessions; 1 excluded date (1 instrument/date

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "research:orb_inverted",
+  "name": "Inverted ORB: fading the opening-range breakout",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "Fading the breakout is minus ORB trade for trade; every fade, mirror and bracket variant loses in both halves.",
+  "tags": [
+    "intraday",
+    "orb"
+  ],
+  "updated": "2026-09-28",
+  "report": "README.md",
+  "include": [
+    "*.md"
+  ],
+  "code": [
+    "src/horizon_trader/intraday/orb_inverted.py"
+  ]
+}
