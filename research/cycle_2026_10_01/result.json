@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "research",
+  "id": "research:cycle_2026_10_01",
+  "name": "Daily strategy research cycle",
+  "description": "Development, validation, walk-forward, stress and legacy replays. Full-period curves and all parameter trials are retained.",
+  "start": "2006-12-29",
+  "end": "2026-09-30",
+  "include": [
+    "*.md",
+    "results/*"
+  ]
+}

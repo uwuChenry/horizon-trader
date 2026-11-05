@@ -1,0 +1,19 @@
+{
+  "verified_at": "2026-10-19T03:40:42.099531+00:00",
+  "checks": [
+    "All trade paths: chronology, one trade/day, expiry, retest timing and target geometry",
+    "All sized fills: whole shares, risk/capital caps, gross/net reconciliation; 100 fee rechecks",
+    "All 216 independent accounts reconcile daily equity, returns and trade P&L",
+    "Input, source, protocol and principal output hashes match the run manifest",
+    "64 real trades: signals survive removing future minutes; independent barrier/fill replay",
+    "Results catalog loads the descriptor and every registered artifact exists"
+  ],
+  "passed": true,
+  "pytest_cases": 51,
+  "pytest_xml_sha256": "1fe59ca07909efe92db2599dfee47cdad230b20f66cf00a5e86dac4b655e7625",
+  "tests_source_sha256": "c70ad56885687e8ca581b9371d9f78cfaa7c7beadf2b0bb8ebe1c4364f59ecdb",
+  "audit_source_sha256": "f2b9103a1b9af4a52900bc7dbd693036ec936ccd5e85b796b967ba7343ad8ccf",
+  "trade_paths": 23790,
+  "sized_fills": 142740,
+  "independent_accounts": 216
+}

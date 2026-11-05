@@ -72,9 +72,40 @@ def test_research_search_filters_notes_and_papers(notes):
 
 
 def test_navigation_entry_point_runs(notes, monkeypatch):
-    monkeypatch.setenv("HT_DATA_DIR", str(notes.parent))  # no saved runs: Backtests shows a hint
+    monkeypatch.setenv("HT_DATA_DIR", str(notes.parent))  # empty catalog shows a hint
     at = AppTest.from_file(str(DASH / "nav.py"), default_timeout=60).run()
     assert not at.exception, at.exception
     at.switch_page(str(DASH / "research.py")).run()
     assert not at.exception, at.exception
     assert at.title[0].value == "Research"
+
+
+def test_nested_reports_links_and_literal_search(notes):
+    nested = notes / "study" / "followup"
+    nested.mkdir(parents=True)
+    report = nested / "report.md"
+    report.write_text(
+        "# Follow-up\n[metrics](metrics.csv)\n[later](later.md)\n[brackets]", encoding="utf-8"
+    )
+    (nested / "later.md").write_text("# Later\nDetails", encoding="utf-8")
+    (nested / "metrics.csv").write_text("variant,return\nx,0.1\n", encoding="utf-8")
+    assert report in N.list_notes(notes)
+    rendered = N.linked_markdown(report, notes)
+    assert "research?note=study%2Ffollowup%2Flater.md" in rendered
+    assert "artifact=study%2Ffollowup%2Fmetrics.csv" in rendered
+    at = AppTest.from_file(str(DASH / "research.py"), default_timeout=30)
+    at.query_params["note"] = "study/followup/report.md"
+    at.query_params["artifact"] = "study/followup/metrics.csv"
+    at.run()
+    assert not at.exception
+    assert "study/followup/report.md" in at.caption[0].value
+    assert at.dataframe[0].value.iloc[0]["variant"] == "x"
+    at.sidebar.text_input[0].input("[brackets]").run()
+    assert not at.exception and len(at.sidebar.radio[0].options) == 1
+
+
+def test_local_links_do_not_offer_files_outside_research(notes):
+    (notes.parent / "private.csv").write_text("secret", encoding="utf-8")
+    path = notes / "escape.md"
+    path.write_text("[private](../private.csv)", encoding="utf-8")
+    assert N.local_links(path, notes) == []

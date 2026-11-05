@@ -1,0 +1,98 @@
+{
+  "protocol_sha256": "613dac9b44bcdf14ba36bbe65daa5d98e719bbbe0dae62521b175f1c1be48100",
+  "data_manifest": {
+    "frozen_utc": "2026-10-13T04:14:42.574939+00:00",
+    "source": "Yahoo via yfinance",
+    "files": [
+      {
+        "symbol": "KO",
+        "sha256": "560aae72e65c954899c216cfd585db221ffe324a241036db0fe7b6f11cb08052",
+        "first": "1962-01-02 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 16303
+      },
+      {
+        "symbol": "PEP",
+        "sha256": "f8148e9dd4abb5dc66c79b6c0994a743f0babfaa162f56f79faa67834ca5ff42",
+        "first": "1972-06-01 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 13704
+      },
+      {
+        "symbol": "HD",
+        "sha256": "ae551bad5ea983b7858dd44e3b51cc716f13f78277fa301d40c85e1da55e4224",
+        "first": "1981-09-22 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 11355
+      },
+      {
+        "symbol": "LOW",
+        "sha256": "51e5a277b7fbdc0869f33a8816a8676ce0de677bb55e927c8522769b4cdfd20b",
+        "first": "1980-03-17 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 11738
+      },
+      {
+        "symbol": "MCD",
+        "sha256": "1e038c411dad0e3bd4707acef62295ab4ac892ca9c0eb70a611faed1f3b88bbe",
+        "first": "1966-07-05 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 15168
+      },
+      {
+        "symbol": "YUM",
+        "sha256": "bc1e0a84cf9dc19152a9e818a4e4ddb71cf15fcab54eb5885aeb8589f0497db7",
+        "first": "1997-09-17 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 7312
+      },
+      {
+        "symbol": "V",
+        "sha256": "2857a9d64f0212d5d984216bae0d5778f5ec2ed85e27c5de134d4d3dc107c3d0",
+        "first": "2008-03-19 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 4671
+      },
+      {
+        "symbol": "MA",
+        "sha256": "566258ca84b3d22e3f7978fec2034a391444129e85bea0434110c4ec993071e6",
+        "first": "2006-05-25 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 5127
+      },
+      {
+        "symbol": "XOM",
+        "sha256": "4d7124663934b8dc6bd5b17e60bbe8ec9a7226e0b2b5b79a6cb633bbe0c32032",
+        "first": "1962-01-02 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 16303
+      },
+      {
+        "symbol": "CVX",
+        "sha256": "0440841f827782c60aaa322b0298e6fb3160de3d68d280a22a2fa83f424cf05c",
+        "first": "1962-01-02 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 16303
+      },
+      {
+        "symbol": "SPY",
+        "sha256": "61fceebe90abb7be85e5e1852fbb224f3851e9aa834d84f4e349f7ebee397cfd",
+        "first": "1993-01-29 00:00:00",
+        "last": "2026-10-12 00:00:00",
+        "rows": 8483
+      }
+    ]
+  },
+  "frozen_data_hashes_verified": true,
+  "used_start": "2017-01-03",
+  "used_end": "2026-10-09",
+  "whole_share_fills": true,
+  "all_fills_after_signal": true,
+  "net_pnl_reconciliation_error": 8.526512829121202e-13,
+  "financing_dollars": 0.0,
+  "independent_fill_replay_max_error": 1.8189894035458565e-11,
+  "bundles": [
+    "data\\results\\20261013-002313_competitor-pairs-net-5k-full-2017-2026",
+    "data\\results\\20261013-002313_competitor-pairs-net-5k-2026-ytd"
+  ]
+}

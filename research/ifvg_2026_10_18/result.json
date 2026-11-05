@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "research:ifvg_2026_10_18",
+  "kind": "research",
+  "name": "IFVG: mechanical gap inversions on SPY and QQQ",
+  "description": "Frozen five-minute rules, breakout controls, costs and chronological checks.",
+  "start": "2021-10-04",
+  "end": "2026-09-24",
+  "include": [
+    "*.md",
+    "*.csv",
+    "*.json"
+  ],
+  "artifacts": [
+    {
+      "path": "data:ifvg_2026_10_18/trade_paths.parquet",
+      "role": "trades",
+      "label": "Raw simulated round trips"
+    },
+    {
+      "path": "data:ifvg_2026_10_18/fills.parquet",
+      "role": "trades",
+      "label": "All sized round trips after costs"
+    },
+    {
+      "path": "data:ifvg_2026_10_18/daily.parquet",
+      "role": "table",
+      "label": "All independent daily accounts"
+    },
+    {
+      "path": "data:ifvg_2026_10_18/equity.html",
+      "role": "chart",
+      "label": "Standalone equity and drawdown chart"
+    }
+  ]
+}

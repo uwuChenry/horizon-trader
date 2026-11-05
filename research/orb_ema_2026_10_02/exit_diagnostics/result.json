@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "kind": "research",
+  "id": "research:orb_ema_exit_diagnostics",
+  "name": "ORB exit-path diagnostics",
+  "description": "Stop timing, exit subgroups, continuation, recovery and uncertainty on matched entries. Descriptive diagnostics retain their original cost and fill assumptions.",
+  "start": "2021-10-22",
+  "end": "2026-10-01",
+  "include": [
+    "*.md",
+    "*.csv",
+    "*.json",
+    "data:orb_ema_2026_10_02/exit_diagnostics*"
+  ]
+}

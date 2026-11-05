@@ -12,6 +12,8 @@ import streamlit as st
 
 from horizon_trader import config
 from horizon_trader.dashboard import notes as N
+from horizon_trader.dashboard.artifacts import render_artifact
+from horizon_trader.results.catalog import Artifact, artifact_role
 
 root = config.REPO_ROOT / "research"
 all_notes = N.list_notes(root)
@@ -31,15 +33,35 @@ with tab_notes:
     if not shown:
         st.info(f"No research notes mention '{query}'.")
     else:
-        pick = st.sidebar.radio("Note", shown, format_func=N.note_title)
+        requested = st.query_params.get("note", "")
+        requested_path = (root / requested).resolve()
+        index = next((i for i, p in enumerate(shown) if p.resolve() == requested_path), 0)
+        pick = st.sidebar.radio("Note", shown, index=index, format_func=N.note_title)
         updated = datetime.fromtimestamp(pick.stat().st_mtime)
-        st.caption(f"`research/{pick.name}` · updated {updated:%Y-%m-%d %H:%M}")
-        st.markdown(pick.read_text(encoding="utf-8"))
+        st.caption(
+            f"`research/{pick.relative_to(root).as_posix()}` · updated {updated:%Y-%m-%d %H:%M}"
+        )
+        st.markdown(N.linked_markdown(pick, root))
+        linked = {p: label for label, p in N.local_links(pick, root) if p.suffix != ".md"}
+        if linked:
+            requested_artifact = (root / st.query_params.get("artifact", "")).resolve()
+            options = list(linked)
+            choice = st.selectbox(
+                "Related data / charts",
+                options,
+                index=options.index(requested_artifact) if requested_artifact in options else 0,
+                format_func=lambda p: f"{linked[p]} · {p.name}",
+            )
+            render_artifact(
+                Artifact(choice, choice.name, artifact_role(choice)), f"research:{choice}"
+            )
 
 with tab_papers:
     papers = N.papers(all_notes)
     if q:
-        hit = papers[["title", "url", "cited in"]].apply(lambda c: c.str.lower().str.contains(q))
+        hit = papers[["title", "url", "cited in"]].apply(
+            lambda c: c.str.lower().str.contains(q, regex=False)
+        )
         papers = papers[hit.any(axis=1)]
     st.caption(
         f"{len(papers)} papers and sources cited across the notes. Click a link to open it. "

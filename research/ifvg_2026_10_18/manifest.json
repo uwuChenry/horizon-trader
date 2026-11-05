@@ -1,0 +1,61 @@
+{
+  "started_at": "2026-10-19T03:38:46.187757+00:00",
+  "rules": {
+    "candle_minutes": 5,
+    "min_gap": 0.02,
+    "gap_age": 12,
+    "retest_age": 6,
+    "tick": 0.01,
+    "first_minute": 15,
+    "last_minute": 120
+  },
+  "targets": [
+    1.0,
+    2.0,
+    3.0
+  ],
+  "costs": [
+    "gross",
+    "net",
+    "stress"
+  ],
+  "tickers": [
+    "SPY",
+    "QQQ"
+  ],
+  "capital": 5000,
+  "protocol_sha256": "30b14283aa038ef3aac7cd021a0ad1731d5bc6c7bc850903f673e54783b32363",
+  "source_hashes": {
+    "ifvg_study.py": "e0b902a90cf55e6d237fa8ad5df6a4e0bad2a634ddcae43d54a6dbacebfdace3",
+    "ifvg.py": "61ca205cac093b80dbd7b0364c92620bdeb71fb5fc10b04cb48562b8fee945ba",
+    "uv.lock": "8e3cdf77bc004b2f8e97448c4b495a0ed2f5b70830fbbf62c44484984c60eecb",
+    "costs.py": "448525ef49c3fec6953ca31927e9d4d01390397719e80f14900fb96b46743cb7"
+  },
+  "inputs": [
+    {
+      "path": "/media/chenrypc/Data/github/horizon-trader/data/massive/derived/minute_SPY.parquet",
+      "sha256": "3d505083cac7fcf85728076c823ab735c81362dc029ec5084e4418a69473c6bb",
+      "rows": 485316,
+      "start": "2021-10-04 09:30:00-04:00",
+      "end": "2026-09-24 15:59:00-04:00"
+    },
+    {
+      "path": "/media/chenrypc/Data/github/horizon-trader/data/massive/derived/minute_QQQ.parquet",
+      "sha256": "23a4b43fc924a991ae1d0b5c6bfeb59159b7e52934e25913efae7f4f2af5aa27",
+      "rows": 485320,
+      "start": "2021-10-04 09:30:00-04:00",
+      "end": "2026-09-24 15:59:00-04:00"
+    }
+  ],
+  "sessions": 1248,
+  "excluded_dates": 1,
+  "finished_at": "2026-10-19T03:39:50.072361+00:00",
+  "simulated_paths": 23790,
+  "rows": 216,
+  "output_hashes": {
+    "metrics.csv": "87f391e65509ef77c322dab71467e00d3dcd94fa8f0715ddbba8fc4c31a7d65d",
+    "trade_paths.parquet": "b8ffd86a4caa45e8e51394b0881ef8289eb598df5ac9208df44ab30f665971da",
+    "fills.parquet": "ddadb2d8c86ef9449d934f8cc43ee9f56b1fec84c4fd589e9599b5ec93f4f899",
+    "daily.parquet": "a578e72bb722448bdde9dc16f65406329731f360cc34c0ec54601159fe7981ca"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "kind": "research",
+  "id": "research:orb_ema_confirmation_risk",
+  "name": "ORB confirmation, stops and risk sizing",
+  "description": "All 24 configurations for one/two-close confirmation, stop widths, risk budgets and leverage caps; includes complete equity, fills, matched paths and verification.",
+  "start": "2021-10-22",
+  "end": "2026-10-01",
+  "include": [
+    "*.md",
+    "*.csv",
+    "*.json",
+    "data:orb_ema_2026_10_02/confirmation_risk*"
+  ]
+}

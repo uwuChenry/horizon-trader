@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "kind": "research",
+  "id": "research:orb_ema_2026_10_02",
+  "name": "ORB with 5-minute EMA",
+  "description": "Original 5-minute EMA entry/exit experiments across stop widths and cost cases. Earlier assumptions are preserved; see the separate Tiered/1c follow-up for the later cost convention.",
+  "start": "2021-10-22",
+  "end": "2026-10-01",
+  "include": [
+    "*.md",
+    "*.csv",
+    "*.json"
+  ],
+  "artifacts": [
+    {
+      "path": "data:orb_ema_2026_10_02/trades_5m.parquet",
+      "role": "trades",
+      "label": "All 5-minute EMA trade paths"
+    }
+  ]
+}
