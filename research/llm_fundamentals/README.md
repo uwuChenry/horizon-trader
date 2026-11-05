@@ -80,6 +80,7 @@ Run it on the first trading day of each month.
 | As of | Universe date | Backend / model | Notes |
 |---|---|---|---|
 | 2026-10-01 | 2026-09-30 | 20 Claude Code subagents, claude-opus-5-5 | first run; all 20 batches valid; AZN, NBIS, SPOT, NU excluded (no filings) |
+| 2026-11-05 | 2026-11-04 | `claude -p`, claude-opus-5-5 | 3 trading days late (missed the 2nd: not scheduled yet; now automatic in the morning job). 15 batches scored ~03:40 ET; 16-20 failed on the Claude usage limit and were scored ~06:55 ET, still before any return in the test window. All 20 valid; AZN, SPOT excluded (no filings). Top 20: NVDA, PLTR, MU, SNDK, ANET, WDC, MSFT, STX, AVGO, MPWR, ADI, LRCX, APH, APP, LLY, VRT, PWR, HWM, GEV, REGN |
 
 ### First run, descriptive only (no returns yet)
 - **Score distribution:** 2 (2), 3 (6), 4 (10), 5 (30), 6 (51), 7 (52), 8 (28), 9 (20),

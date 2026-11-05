@@ -161,9 +161,11 @@ export type Ledger = {
   cash: number | null;
   equity: Point[];
   benchmark: Point[];
-  positions: { symbol: string; shares: number; price: number | null; value: number | null; weight: number | null }[];
-  pending: { symbol: string; quantity: number; ref_price: number; asof: string }[];
+  positions: { symbol: string; shares: number; unit?: "shares" | "contracts"; price: number | null; value: number | null; weight: number | null }[];
+  pending: { symbol: string; quantity: number; ref_price: number | null; asof: string }[];
   fills: Table | null;
+  account?: string | null; // Alpaca paper account behind the ledger
+  ideas?: Table | null; // AI competition follower: every journal idea and what happened to it
   commissions: { actual: number; modeled: number; orders: number } | null;
 };
 

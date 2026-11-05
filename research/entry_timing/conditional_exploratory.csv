@@ -1,0 +1,4 @@
+bucket,n,"15:00 to close, bp",t (to close),"15:00 to next close, bp",t (to next close)
+down >2% by 15:00,2512,1.33,0.49,23.57,2.45
+within ±2%,8360,-1.65,-2.04,10.61,3.2
+up >2% by 15:00,2918,5.46,2.84,27.38,3.53

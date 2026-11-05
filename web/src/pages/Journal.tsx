@@ -27,14 +27,21 @@ function headline(stats: JournalForecastStat[] | undefined, h: number) {
 
 function Scorecard({ data }: { data: JournalPayload }) {
   const s = data.summary;
+  const f1 = headline(s?.forecasts, 1);
   const f5 = headline(s?.forecasts, 5);
   const f20 = headline(s?.forecasts, 20);
   const i = s?.ideas;
   const days = data.days.filter((d) => d.complete).length;
   const vsMirror = i && i.paired ? i.pnl_paired - i.mirror_pnl_paired : null;
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
       <Kpi label="Days logged" value={days} sub={data.days[0]?.date ? `latest ${data.days[0].date}` : undefined} />
+      <Kpi
+        label="Next-day calls hit"
+        value={f1?.n ? pct(f1.hit_rate, 0) : "–"}
+        sub={f1?.n ? `always-up ${pct(f1.always_up_hit_rate, 0)} · n=${f1.n}` : "scored after the next close"}
+        tone={f1?.n && f1.hit_rate !== null && f1.always_up_hit_rate !== null ? tone(f1.hit_rate - f1.always_up_hit_rate) : undefined}
+      />
       <Kpi
         label="5-day calls hit"
         value={f5?.n ? pct(f5.hit_rate, 0) : "–"}
@@ -314,7 +321,7 @@ export function JournalPage() {
         title="Forecast journal"
         sub={
           <>
-            Each trading day at 15:30 ET, analysts (market, news, earnings) report, a bull and a bear argue, and a trader writes down forecasts and trade
+            Each trading day at 15:00 ET, analysts (market, news, earnings) report, a bull and a bear argue, and a trader writes down forecasts and trade
             specs before the outcome is known. Code prices the trades from live option quotes and scores everything.{" "}
             <Link className="text-accent hover:underline" to="/research/forecast_journal">
               Protocol and pass/fail rules
@@ -330,7 +337,7 @@ export function JournalPage() {
       {!data.days.length ? (
         <Card>
           <Empty>
-            No journal yet. Run <code className="num">uv run python -m horizon_trader.agents.journal run</code> during market hours (15:30 ET is the schedule).
+            No journal yet. Run <code className="num">uv run python -m horizon_trader.agents.journal run</code> during market hours (15:00 ET is the schedule).
           </Empty>
         </Card>
       ) : (

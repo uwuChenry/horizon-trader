@@ -23,21 +23,26 @@ debate, but risk is enforced by code and the evidence is forward only.
    (web). Each must date and source every fact; web results from earlier years are discarded.
 3. **Debate:** a bull case and a bear case, then a rebuttal from each side.
 4. **Trader** (JSON schema): regime, bias, thesis, invalidation, debate winner; mandatory
-   SPY/QQQ calls at 5 and 20 days plus up to 4 optional; 0-3 trade specs; positions to close.
+   SPY/QQQ calls at 1, 5 and 20 days plus up to 4 optional; 0-3 trade specs; positions to close.
 5. **Code takes over** (`agents/book.py`): resolve each spec to listed contracts, check quotes
    and risk caps, open the idea and its mirror, mark everything, close at horizon or expiry,
    score.
 
 ## Running it
 ```bash
-uv run python -m horizon_trader.agents.journal run      # weekdays ~15:30 ET (live option quotes)
+uv run python -m horizon_trader.agents.journal run      # weekdays ~15:00 ET (live option quotes)
 uv run python -m horizon_trader.agents.journal score    # mark/close/rescore without a new decision
 uv run python -m horizon_trader.agents.journal report   # scorecard in the terminal
 ```
-Scheduled by `deploy/windows/install_tasks.ps1` (job `horizon-trader journal`, weekdays 15:30
+Scheduled by `deploy/windows/install_tasks.ps1` (job `horizon-trader journal`, weekdays 15:00
 machine time, which assumes the PC is on New York time like the other jobs). The PC must be on
 and logged in to Claude Code. Usage per run: 3 Sonnet analyst calls (2 with web search) and 5
 Opus calls; each role's cost is logged in `raw/<role>.json` and shown on the dashboard.
+
+Option bid/ask: live IBKR quotes first (IB Gateway must be running and logged in at 15:00;
+read-only, client id 31), Yahoo's ~15-minute-delayed quotes as the per-contract fallback.
+Every priced leg stores `quote_source` (`ibkr` or `yahoo`), and implied moves say
+`mid, ibkr` or `mid, yahoo`.
 
 Outside market hours Yahoo shows 0/0 option quotes, so ideas are rejected ("no live quote")
 while the reasoning and forecasts are still logged.

@@ -54,10 +54,14 @@ class GuardError(RuntimeError):
 
 @dataclass(frozen=True)
 class Rules:
-    premium_cap: float = 375.0  # option debit per idea: 2.5x the journal's $150
-    premium_total: float = 1_500.0  # open option debit: 2.5x the journal's $600
-    shares_cap: float = 1_500.0  # per shares idea
-    shares_total: float = 3_000.0  # open shares cost (the contest plan's stock budget)
+    # High-risk contest mode (owner, 2026-11-05): only first place counts, a wipeout is accepted.
+    premium_cap: float = 1_000.0  # option debit per idea (journal: $150)
+    premium_total: float = 4_000.0  # open option debit, 80% of the $5k account (journal: $600)
+    shares_cap: float = 2_000.0  # per shares idea (journal: $2,500 of a $10k book)
+    shares_total: float = 4_000.0  # open shares cost; cash caps options + shares together
+    uncap_spreads: bool = True  # a debit-spread idea buys only its long leg: no capped upside
+    low_conf: int = 2  # ideas with confidence <= this get...
+    low_conf_scale: float = 0.5  # ...half the per-idea budget
     max_quote_spread: float = 0.30  # same as the journal: skip legs quoted wider than 30% of mid
     stock_pad: float = 0.002  # stock buy limit = ask * (1 + pad)
     max_stock_spread: float = 0.01  # IEX quotes can be thin: skip a stock quoted wider than 1%
@@ -175,10 +179,15 @@ def close_reason(rec: dict, jpos: dict | None, today: str, rules: Rules) -> str 
     return None
 
 
-def record_from_journal(p: dict) -> dict:
+def record_from_journal(p: dict, rules: Rules | None = None) -> dict:
+    rules = rules or Rules()
     asset = "stock" if p["legs"][0]["type"] == "stock" else "option"
+    structure, src = p["structure"], p["legs"]
+    if rules.uncap_spreads and "spread" in structure:
+        structure = structure.replace("_debit_spread", "") + " (spread uncapped)"
+        src = [lg for lg in src if int(lg["side"]) > 0]
     legs = []
-    for lg in p["legs"]:
+    for lg in src:
         side = int(lg["side"])
         ref = lg.get("ask") if side > 0 else lg.get("bid")
         legs.append(
@@ -191,13 +200,19 @@ def record_from_journal(p: dict) -> dict:
         )
     return {
         "id": p["id"], "date": p["date"], "underlying": p["underlying"],
-        "structure": p["structure"], "asset": asset, "expiry": p.get("expiry"), "legs": legs,
+        "structure": structure, "journal_structure": p["structure"], "asset": asset,
+        "expiry": p.get("expiry"), "legs": legs, "confidence": p.get("confidence"),
         "journal_qty": p.get("qty"), "status": "skipped", "reason": "", "qty": 0.0,
         "limit": None, "cost": 0.0, "orders": [], "close_reason": None, "closes": 0,
     }  # fmt: skip
 
 
 # ---------------------------------------------------------------- planning
+
+
+def _scale(rec: dict, rules: Rules) -> float:
+    conf = rec.get("confidence")
+    return rules.low_conf_scale if conf is not None and conf <= rules.low_conf else 1.0
 
 
 def plan_open(rec: dict, broker, rules: Rules, records: dict, acct: dict) -> OrderSpec | None:
@@ -211,8 +226,8 @@ def plan_open(rec: dict, broker, rules: Rules, records: dict, acct: dict) -> Ord
             rec["reason"] = f"IEX quote too wide ({bid}/{ask})"
             return None
         limit = round(ask * (1 + rules.stock_pad), 2)
-        budget = min(rules.shares_cap, rules.shares_total - committed(records, "stock"),
-                     acct["cash"])  # fmt: skip
+        left = rules.shares_total - committed(records, "stock")
+        budget = min(rules.shares_cap * _scale(rec, rules), left, acct["cash"])
         qty = math.floor(budget / limit * 1000) / 1000  # fractional shares
         if qty * limit < 1:
             rec["reason"] = f"stock budget used up (${budget:,.0f} left)"
@@ -227,6 +242,7 @@ def plan_open(rec: dict, broker, rules: Rules, records: dict, acct: dict) -> Ord
         rec["reason"] = f"Alpaca options level {acct.get('options_level')} < {need}"
         return None
     quotes = broker.option_quotes([lg["symbol"] for lg in rec["legs"]])
+    rec["quote_source"] = getattr(broker, "last_quote_source", "")
     for lg in rec["legs"]:
         bid, ask = quotes.get(lg["symbol"], (0.0, 0.0))
         if ask <= 0:
@@ -242,8 +258,8 @@ def plan_open(rec: dict, broker, rules: Rules, records: dict, acct: dict) -> Ord
         rec["reason"] = "no debit at current quotes"
         return None
     limit = tick_up(debit, multi)
-    budget = min(rules.premium_cap, rules.premium_total - committed(records, "option"),
-                 acct["cash"])  # fmt: skip
+    left = rules.premium_total - committed(records, "option")
+    budget = min(rules.premium_cap * _scale(rec, rules), left, acct["cash"])
     qty = math.floor(budget / (limit * 100))
     if qty < 1:
         rec["reason"] = f"one contract ${limit * 100:,.0f} > budget ${max(budget, 0):,.0f}"
@@ -433,7 +449,7 @@ def run(
     ]
     late = now.strftime("%H:%M") > rules.open_cutoff
     for p in ideas:
-        rec = record_from_journal(p)
+        rec = record_from_journal(p, rules)
         if p["date"] != today:
             rec |= {"status": "missed", "reason": "not executed on its decision date"}
         elif p.get("status") != "open":
@@ -501,6 +517,11 @@ def main() -> None:
         "--keys", default="ALPACA_COMPETITION_AI",
         help="env prefix of the paper keys; any other prefix needs --dry-run",
     )  # fmt: skip
+    p.add_argument(
+        "--no-ibkr",
+        action="store_true",
+        help="Alpaca indicative option quotes only (default: live IBKR quotes first)",
+    )
     a = p.parse_args()
     if a.command == "status":
         status()
@@ -508,9 +529,10 @@ def main() -> None:
     if a.keys != "ALPACA_COMPETITION_AI" and not (a.command == "run" and a.dry_run):
         raise SystemExit("--keys other than ALPACA_COMPETITION_AI only works with run --dry-run")
     from horizon_trader.agents import book, journal
+    from horizon_trader.datasources.ibkr_quotes import IBKRQuotes
     from horizon_trader.execution.alpaca_broker import AlpacaPaper
 
-    broker = AlpacaPaper(a.keys)
+    broker = AlpacaPaper(a.keys, live_quotes=None if a.no_ibkr else IBKRQuotes(client_id=32))
     if a.command == "kill":
         kill(broker)
         return

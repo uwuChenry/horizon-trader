@@ -112,7 +112,10 @@ def order_request(spec: OrderSpec):
 
 
 class AlpacaPaper:
-    def __init__(self, prefix: str = "ALPACA_COMPETITION_AI"):
+    """`live_quotes` (e.g. `datasources.ibkr_quotes.IBKRQuotes`) is asked first for option
+    quotes; Alpaca's free indicative feed is the fallback. `last_quote_source` says which."""
+
+    def __init__(self, prefix: str = "ALPACA_COMPETITION_AI", live_quotes=None):
         from alpaca.data.historical.option import OptionHistoricalDataClient
         from alpaca.data.historical.stock import StockHistoricalDataClient
         from alpaca.trading.client import TradingClient
@@ -121,6 +124,8 @@ class AlpacaPaper:
         self.trading = TradingClient(key, secret, paper=True)
         self.options = OptionHistoricalDataClient(key, secret)
         self.stocks = StockHistoricalDataClient(key, secret)
+        self.live_quotes = live_quotes
+        self.last_quote_source = ""
 
     def account(self) -> dict:
         a = self.trading.get_account()
@@ -143,7 +148,14 @@ class AlpacaPaper:
         return out
 
     def option_quotes(self, symbols: list[str]) -> dict[str, tuple[float, float]]:
-        """(bid, ask) from the free 'indicative' feed (approximate; OPRA needs a paid plan)."""
+        """(bid, ask): live IBKR if it has every symbol (a spread's legs must come from one
+        source), else Alpaca's free 'indicative' feed (approximate; OPRA needs a paid plan)."""
+        if self.live_quotes is not None:
+            got = self.live_quotes.quotes(symbols)
+            if symbols and all(s in got for s in symbols):
+                self.last_quote_source = "ibkr"
+                return {s: got[s] for s in symbols}
+        self.last_quote_source = "alpaca-indicative"
         from alpaca.data.enums import OptionsFeed
         from alpaca.data.requests import OptionLatestQuoteRequest
 

@@ -55,8 +55,10 @@ def _positions() -> pd.DataFrame:
     rows = []
     for p in (book or {}).get("positions", []):
         legs = " / ".join(
-            f"{'+' if leg['side'] > 0 else '-'}{leg['symbol']}" for leg in p.get("legs", [])
-        )
+            f"{'+' if leg['side'] > 0 else '-'}{leg['symbol']}"
+            + (f" ({leg['quote_source']})" if leg.get("quote_source") else "")
+            for leg in p.get("legs", [])
+        )  # quote_source: ibkr (live) or yahoo (~15 min delayed)
         rows.append({**{c: p.get(c) for c in POSITION_COLS}, "contracts": legs})
     df = pd.DataFrame(rows, columns=POSITION_COLS)
     return df.sort_values(["date", "id"], ascending=[False, True]) if len(df) else df

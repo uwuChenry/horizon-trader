@@ -2,7 +2,7 @@
 
 The journal reads Yahoo directly instead of `datasources.store`: it runs during market hours
 (option quotes are zero outside them), and caching a half-finished day in data/bars would feed
-a 15:30 price to the evening shadow run as that day's close.
+an intraday price to the evening shadow run as that day's close.
 """
 
 from __future__ import annotations
@@ -43,15 +43,20 @@ class Market(Protocol):
 
 
 class YahooMarket:
-    """yfinance. Delayed quotes: fine for a journal, not for execution."""
+    """yfinance for closes, expiries and chain structure (strikes, contract symbols, IV).
 
-    def __init__(self) -> None:
+    Yahoo's option bid/ask are ~15 minutes delayed. With `quotes` (e.g.
+    `datasources.ibkr_quotes.IBKRQuotes`), `requote` swaps in live bid/ask for the contracts
+    that matter and falls back to Yahoo's per contract when the live source has nothing."""
+
+    def __init__(self, quotes=None) -> None:
         import yfinance as yf
 
         from horizon_trader.config import data_dir
 
         yf.set_tz_cache_location(str(data_dir() / "yfinance-cache"))
         self.yf = yf
+        self.quotes = quotes
         self._chains: dict[tuple[str, str], tuple[pd.DataFrame, pd.DataFrame]] = {}
 
     def closes(self, symbols: list[str], start: str) -> pd.DataFrame:
@@ -76,6 +81,9 @@ class YahooMarket:
     def spot(self, symbol: str) -> float:
         return float(self.yf.Ticker(symbol).fast_info["last_price"])
 
+    def live_quotes(self, symbols: list[str]) -> dict[str, tuple[float, float]]:
+        return self.quotes.quotes(symbols) if self.quotes is not None else {}
+
     def raw_close(self, symbol: str, day: str) -> float | None:
         d = pd.Timestamp(day)
         h = self.yf.Ticker(symbol).history(
@@ -93,6 +101,27 @@ def live(row: pd.Series) -> bool:
     return bool(row["bid"] > 0 and row["ask"] > 0 and row["ask"] >= row["bid"])
 
 
+def requote(market: Market, rows: pd.DataFrame) -> pd.DataFrame:
+    """`rows` (chain rows) with live bid/ask where the market has a live source for them.
+
+    Adds `quote_source`: "ibkr" for a live quote, "yahoo" for the chain's own (delayed) one.
+    Markets without `live_quotes` (tests, plain Yahoo) return the rows unchanged."""
+    out = rows.reset_index(drop=True)  # rows from calls and puts can share index labels
+    out["quote_source"] = "yahoo"
+    fetch = getattr(market, "live_quotes", None)
+    if fetch is None or out.empty:
+        return out
+    try:
+        got = fetch([str(s) for s in out["contractSymbol"]])
+    except Exception:  # noqa: BLE001 - the delayed quote is the fallback
+        got = {}
+    for i, sym in zip(out.index, out["contractSymbol"], strict=True):
+        if sym in got:
+            out.loc[i, ["bid", "ask"]] = got[sym]
+            out.loc[i, "quote_source"] = "ibkr"
+    return out
+
+
 def nearest_expiry(expiries: list[str], today: str, days: int) -> str | None:
     t = pd.Timestamp(today)
     future = [e for e in expiries if pd.Timestamp(e) > t]
@@ -107,7 +136,7 @@ class ImpliedMove:
     expiry: str
     days: int
     move_pct: float | None
-    source: str  # "mid" (live quotes), "last" (last trades) or "none"
+    source: str  # "mid, ibkr" / "mid, yahoo" (quotes), "last" (last trades) or "none"
 
 
 def implied_move(market: Market, symbol: str, today: str, days: int = 7) -> ImpliedMove | None:
@@ -122,9 +151,11 @@ def implied_move(market: Market, symbol: str, today: str, days: int = 7) -> Impl
     out_days = (pd.Timestamp(expiry) - pd.Timestamp(today)).days
     if p.empty:
         return ImpliedMove(symbol, expiry, out_days, None, "none")
-    p = p.iloc[0]
+    fresh = requote(market, pd.DataFrame([c, p.iloc[0]]))
+    c, p = fresh.iloc[0], fresh.iloc[1]
     if live(c) and live(p):
-        straddle, source = (c["bid"] + c["ask"] + p["bid"] + p["ask"]) / 2, "mid"
+        src = "ibkr" if c["quote_source"] == p["quote_source"] == "ibkr" else "yahoo"
+        straddle, source = (c["bid"] + c["ask"] + p["bid"] + p["ask"]) / 2, f"mid, {src}"
     elif c["lastPrice"] > 0 and p["lastPrice"] > 0:
         straddle, source = c["lastPrice"] + p["lastPrice"], "last"
     else:

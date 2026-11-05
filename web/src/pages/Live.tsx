@@ -36,6 +36,7 @@ function LedgerCard({ l }: { l: Ledger }) {
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="text-lg font-semibold tracking-tight text-fg">{l.name.replaceAll("_", " ")}</h2>
         <span className="rounded-full bg-panel-2 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{l.kind}</span>
+        {l.account && <span className="num text-xs text-muted">Alpaca {l.account}</span>}
         <span className="num text-xs text-faint">
           {l.start} → {l.end} · {l.days} days
         </span>
@@ -61,7 +62,11 @@ function LedgerCard({ l }: { l: Ledger }) {
           {l.positions.length ? (
             <Bars
               format={(v) => pct(v)}
-              rows={l.positions.map((p) => ({ label: p.symbol, value: p.weight ?? 0, note: `${fixed(p.shares, p.shares < 10 ? 3 : 1)} sh` }))}
+              rows={l.positions.map((p) => ({
+                label: p.symbol,
+                value: p.weight ?? 0,
+                note: p.unit === "contracts" ? `${fixed(p.shares, 0, true)} contracts` : `${fixed(p.shares, p.shares < 10 ? 3 : 1)} sh`,
+              }))}
             />
           ) : (
             <Empty>Flat.</Empty>
@@ -75,7 +80,8 @@ function LedgerCard({ l }: { l: Ledger }) {
                     {p.quantity >= 0 ? "BUY" : "SELL"} {p.symbol}
                   </span>
                   <span className="num text-muted">
-                    {fixed(Math.abs(p.quantity), 4)} @ ~{fixed(p.ref_price)} · {p.asof}
+                    {fixed(Math.abs(p.quantity), 4)}
+                    {p.ref_price != null && <> @ ~{fixed(p.ref_price)}</>} · {p.asof}
                   </span>
                 </div>
               ))}
@@ -83,6 +89,22 @@ function LedgerCard({ l }: { l: Ledger }) {
           )}
         </Card>
       </div>
+      {l.ideas && (
+        <Card>
+          <CardTitle sub="Every forecast-journal idea: opened, skipped or missed, and why. Quote source ibkr = live, otherwise Alpaca's indicative feed">
+            Journal ideas
+          </CardTitle>
+          <DataTable
+            data={l.ideas}
+            dense
+            maxHeight={360}
+            columns={["id", "underlying", "structure", "confidence", "status", "qty", "limit", "cost", "quote_source", "reason", "close_reason"].map((c) => ({
+              key: c,
+              render: c === "cost" ? (v: unknown) => <span className="num">{money(v)}</span> : undefined,
+            }))}
+          />
+        </Card>
+      )}
       {l.fills && (
         <Card>
           <CardTitle sub="Most recent first">Fills</CardTitle>

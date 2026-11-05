@@ -209,3 +209,23 @@ The [inventory](../portfolio_data_review/local_data_inventory.md) records
 1,253 local minute/daily dates, 60 monthly point-in-time universe dates, selected
 second-bar windows rather than quotes, and no dedicated futures/options dataset.
 No subscriptions or live trading settings were changed by this review.
+
+## Forward tests: what each one decides (2026-11-05)
+
+A forward test earns its keep only if it feeds a dated decision. State on 2026-11-05:
+
+| Test | Where | State | Decides | When | Next action |
+|---|---|---|---|---|---|
+| ETF daily book | own simulator (`daily_book_shadow`) | running since 2026-10-01 | that live signals match the backtest (costs are modeled, not measured) | ongoing | make the core-book decision first (below), then move the decided book to its own Alpaca paper account: fractional shares remove the whole-share misweighting and give broker fills |
+| LLM fundamentals | `data/llm/fundamental_scores` | **1 of 12 runs** (Oct only) | PASS/KILL on 1-month rank IC | after 12 monthly runs | the November run is due; months can't be back-filled. Schedule it monthly |
+| Forecast journal | `data/journal` | first run 2026-11-05 15:00 | calls and ideas PASS/KILL | 60 run days (~Feb 2027), 120 (~May 2027) | keep the PC on at 15:00 with Claude logged in; Gateway for live quotes |
+| AI competition | Alpaca `PA31SWJZFFPD` | starts 2026-11-05 | nothing about skill (8 weeks, a month late, high-risk sizing); it's a plumbing test and the contest entry | 2026-12-31 | check `agents.competition status` after the first trades |
+| Scanner log | `data/live/scanner` | **broken: 1 capture since Oct 1** | whether IBKR's live scanner finds ORB's pick | ~3 months of captures | needs Gateway up at 09:25 (mini PC + IBC) |
+| ORB top-1 | IBKR paper (`orb_live`) | built, never run | does ORB survive real fills (backtest Sharpe ~0.7)? | ~6 months of paper | after Gateway is reliable: `--what-if` first, then paper. IBKR only (needs the scanner) |
+| Large-cap momentum | not built | candidate | is the 2022-26 result more than one bull market? | backtest first | validate on 2016-2021 (one month of Massive Developer) before building a live ranker; then an Alpaca account (fractional shares) |
+| QQQ noise-area momentum | not built | candidate (picked after SPY failed) | does the post-publication edge persist? | ~6 months of paper | lowest priority; an Alpaca account would do (QQQ only) |
+
+Decisions that need no more data: the core book (momentum + vol-managed as the core; trend
+vs risk parity; replace or drop the swing sleeve). Eight more weeks of shadow fills can't tell
+these apart; the backtests and robustness grids are the evidence. Parked unless wanted:
+Serenity follow-up and the Congress retests (Senate buys, $250k+ buys).

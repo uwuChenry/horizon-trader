@@ -7,7 +7,7 @@ Each study is a folder: `README.md` (verdict first), `result.json` (status, verd
 tags, period, artifacts), an optional `protocol.md` written before the results, and
 small evidence files. Large data stays under `data/` and is referenced as `data:...`.
 
-**1** core · **4** candidate · **1** running · **2** inconclusive · **2** idea · **14** reference · **14** dead
+**1** core · **4** candidate · **1** running · **2** inconclusive · **2** idea · **14** reference · **15** dead
 
 ## Core: trading or forward-testing now
 
@@ -42,7 +42,7 @@ small evidence files. Large data stays under `data/` and is referenced as `data:
 | Study | Verdict | Period | Tags |
 |---|---|---|---|
 | [Investment club competition: October 7 to December 31, 2026](competition/README.md) | Investment-club competition plan, 2026-10-07 to 2026-12-31, $5k: concentrated swings plus a capped option budget. The repo records no competition trades. |  | alpaca, llm, options, planning |
-| [Forecast journal: an LLM analyst team, scored forward](forecast_journal/README.md) | Built 2026-11-05, first run pending. Daily SPY/QQQ calls and option-trade specs from an analyst/debate/trader team, scored after 5 and 20 days against always-up and mirror trades. No orders. |  | llm, agents, options, macro |
+| [Forecast journal: an LLM analyst team, scored forward](forecast_journal/README.md) | Built 2026-11-05, first run pending. Daily SPY/QQQ calls and option-trade specs from an analyst/debate/trader team, scored after 1, 5 and 20 days against always-up and mirror trades. No orders. |  | llm, agents, options, macro |
 
 ## Reference notes and diagnostics
 
@@ -70,6 +70,7 @@ small evidence files. Large data stays under `data/` and is referenced as `data:
 | [Alpha formulas on ~100 large caps, 2010-2023](alphas/README.md) | None of 20 formula variants on ~100 large caps (2010-2023) reached t > 2 in the claimed direction; 12-1 momentum and 1-week reversal came closest at t ~ 1.95. |  | stocks, factors, llm |
 | [Copy-trading Congress: does buying what members disclose beat SPY?](congress/README.md) | Buying every disclosed purchase after filing: 6.5% CAGR vs SPY 12.4% (alpha -6.7%/yr). Senate buys and $250k+ buys are hints for a pre-registered retest. |  | stocks, events |
 | [Two internet indicator rules: 5-minute 12-EMA and EMA9 × VWAP](ema_vwap/README.md) | 12-EMA stop-and-reverse loses after costs; EMA9 x VWAP long-only passed on SPY only (1 of 16 tests). At $5k everything loses to the $0.35 minimum. |  | intraday, etf, indicators |
+| [Entry time of day for short swing trades](entry_timing/README.md) | For 1-5 day longs in high-beta tech (2021-26), buying at 9:35, noon or 15:00 makes no reliable difference (15:00 minus 9:35: -10 bp, +0.5 bp by half). Buying before the close beat waiting for the next open only in 2024+ (+21 bp, t 3.0). 15:00 entries are fine. | 2021-10 to 2026-11 | intraday, timing, etf, stocks |
 | [ETF ORB: QQQ, SPY, TQQQ, SPXL, UPRO, SOXL, SMH](etf_orb/README.md) | ORB on QQQ/SPY/leveraged ETFs, 2021-26: 19 of 21 lose at $5k with measured costs; buy-and-hold wins everywhere. |  | intraday, orb, etf |
 | [Gold vs the dollar: is the inverse relationship tradeable? (2026-09-25)](gold_dollar/README.md) | The same-day gold/dollar inverse link is real and stable, but none of 5 pre-registered trading tests passed. |  | macro, etf |
 | [IFVG: mechanical gap inversions on SPY and QQQ](ifvg/README.md) | All 12 mechanical IFVG variants on SPY/QQQ lose after Tiered fees and 1c slippage, in both 2021-23 and 2024-26. | 2021-10 to 2026-09 | intraday, etf, indicators |

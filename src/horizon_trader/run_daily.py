@@ -4,12 +4,14 @@ uv run python -m horizon_trader.run_daily --dry-run          # print today's tar
 uv run python -m horizon_trader.run_daily --mode shadow      # forward test in our own simulator
 uv run python -m horizon_trader.run_daily --mode what-if     # IBKR's commission/margin, no orders
 uv run python -m horizon_trader.run_daily --mode paper       # market-on-open orders, IBKR paper
+uv run python -m horizon_trader.run_daily --mode alpaca      # Alpaca paper, fractional, next open
 uv run python -m horizon_trader.run_daily --kill             # kill switch on + cancel all orders
 
 Run after the close (or before the next open): signals use the last complete daily bar and
 orders fill at the next open, like the backtest. Shadow and paper keep a virtual
 `account.starting_cash` ledger each under data/live/, so the two can be compared fill by fill.
-There is no live mode: the IBKR adapter refuses any non-paper account.
+There is no live mode: the IBKR adapter refuses any non-paper account, and the Alpaca one
+only takes paper keys (paper-api.alpaca.markets).
 """
 
 from __future__ import annotations
@@ -31,8 +33,8 @@ from horizon_trader.sleeves import build_sleeve
 
 log = logging.getLogger("horizon_trader")
 
-Mode = Literal["dry-run", "shadow", "what-if", "paper"]
-MODES: tuple[Mode, ...] = ("dry-run", "shadow", "what-if", "paper")
+Mode = Literal["dry-run", "shadow", "what-if", "paper", "alpaca"]
+MODES: tuple[Mode, ...] = ("dry-run", "shadow", "what-if", "paper", "alpaca")
 BarFetcher = Callable[[list[str]], dict[str, pd.DataFrame]]  # {"open": ..., "close": ...}
 NY = "America/New_York"
 
@@ -74,10 +76,12 @@ def run(
     bars: BarFetcher | None = None,
     *,
     ib=None,
+    alpaca=None,
     root: Path | None = None,
     now: pd.Timestamp | None = None,
 ) -> tuple[pd.Series, list[Order]]:
-    """`ib` (an ib_async.IB) and `root` (ledger folder) exist for tests."""
+    """`ib` (an ib_async.IB), `alpaca` (an AlpacaPaper-like api) and `root` (ledger folder)
+    exist for tests."""
     if mode not in MODES:
         raise SystemExit(f"unknown mode {mode!r}; there is no live mode")
     settings = load_settings(config)
@@ -107,7 +111,28 @@ def run(
         ledger.save()
         return targets, orders
 
+    if mode == "alpaca":
+        return _run_alpaca(settings, prices, panels["open"], costs, asof, alpaca, root)
     return _run_ibkr(settings, prices, panels["open"], costs, asof, mode, ib, root)
+
+
+def _run_alpaca(settings, prices, opens, costs, asof, api, root):
+    from horizon_trader.execution import alpaca_book as ab
+
+    if api is None:
+        from horizon_trader.execution.alpaca_broker import AlpacaPaper
+
+        api = AlpacaPaper(ab.PREFIX)
+    ledger = Ledger.load(settings.live.strategy + ab.SUFFIX, settings.account.starting_cash, root)
+    broker = ab.AlpacaBookBroker(api, ledger, settings.live)
+    log.info("Alpaca paper account %s, ledger %r", broker.account, ledger.name)
+    booked = ab.sync_fills(api, ledger, costs, opens)
+    ledger.save()
+    log.info("Alpaca: %d new fills booked", booked)
+    ab.reconcile(api, ledger)
+    targets, orders = _plan_once(settings, prices, ledger, asof, broker)
+    ledger.save()
+    return targets, orders
 
 
 def _run_ibkr(settings, prices, opens, costs, asof, mode, ib, root):
@@ -158,7 +183,7 @@ def _plan_once(settings, prices, ledger: Ledger, asof: str, broker=None):
         return targets, []
     if broker is not None:
         broker.submit_all(orders, last, asof)  # adds them to ledger.pending once sent
-        log.info("sent %d market-on-open orders to IBKR", len(orders))
+        log.info("sent %d orders for the next open to the broker", len(orders))
     else:
         ledger.add_pending(orders, last, asof)
         log.info("queued %d shadow orders for the next open", len(orders))
@@ -171,15 +196,22 @@ def _log_plan(targets: pd.Series, orders: list[Order], last: dict[str, float]) -
         log.info("%s %+.4f %s @ ~%.2f", o.order_type, o.quantity, o.symbol, last[o.symbol])
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    parser.add_argument("--mode", choices=MODES, default="dry-run")
-    parser.add_argument("--dry-run", action="store_true", help="same as --mode dry-run")
-    parser.add_argument("--kill", action="store_true", help="kill switch on, cancel all orders")
-    args = parser.parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    if args.kill:
+ALPACA_PREFIXES = ("ALPACA_DAILY_BOOK", "ALPACA_COMPETITION_AI", "ALPACA_MOMENTUM",
+                   "ALPACA_QQQ_NOISE")  # fmt: skip
+
+
+def kill_everything() -> None:
+    """Kill switch file FIRST (every runner checks it), then cancel open orders at IBKR and at
+    every Alpaca paper account with keys in .env. One broker being down doesn't stop the rest."""
+    import os
+
+    from horizon_trader.execution.ibkr_broker import kill_switch_path
+
+    path = kill_switch_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(pd.Timestamp.now(tz=NY).isoformat(), encoding="utf-8")
+    log.warning("kill switch ON (%s)", path)
+    try:
         from horizon_trader.execution.ibkr import connect
         from horizon_trader.execution.ibkr_broker import kill
 
@@ -188,6 +220,31 @@ def main() -> None:
             kill(ib)
         finally:
             ib.disconnect()
+    except Exception as exc:  # noqa: BLE001
+        log.error("IBKR: could not cancel orders (%r)", exc)
+    for prefix in ALPACA_PREFIXES:
+        if not os.environ.get(f"{prefix}_API_KEY"):
+            continue
+        try:
+            from horizon_trader.execution.alpaca_broker import AlpacaPaper
+
+            AlpacaPaper(prefix).cancel_all()
+            log.warning("%s: open Alpaca orders cancelled", prefix)
+        except (Exception, SystemExit) as exc:  # noqa: BLE001
+            log.error("%s: could not cancel orders (%r)", prefix, exc)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument("--mode", choices=MODES, default="dry-run")
+    parser.add_argument("--dry-run", action="store_true", help="same as --mode dry-run")
+    parser.add_argument("--kill", action="store_true",
+                        help="kill switch on, cancel open orders at IBKR and every Alpaca account")
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if args.kill:
+        kill_everything()
         return
     from horizon_trader.execution.ibkr_broker import GuardError
 

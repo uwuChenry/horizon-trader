@@ -36,7 +36,7 @@ Evaluated at 60 completed run days (about 3 months) and again at 120.
   caps), with the journal continuing alongside as the comparison.
 
 ## Fixed setup
-- Schedule: weekdays at 15:30 ET (`deploy/windows/journal.ps1`). A missed day stays missed:
+- Schedule: weekdays at 15:00 ET (`deploy/windows/journal.ps1`). A missed day stays missed:
   `run` only accepts today's New York date and a finished day is never rebuilt.
 - Roles and models: analysts `claude-sonnet-5-5` (news and earnings with WebSearch/WebFetch,
   market with no tools), debate and trader `claude-opus-5-5`, via `claude -p` with no saved
@@ -52,11 +52,28 @@ Evaluated at 60 completed run days (about 3 months) and again at 120.
 - **Power is low.** 60 days give ~12 non-overlapping 5-day calls per ticker: a real 60% hit
   rate can't be told from 50% at that size. The 60-day check guards against an obviously bad
   signal; only the 120-day check (or longer) can support a good one.
-- Yahoo option quotes are delayed (~15 min); fills at a delayed ask/bid are approximate.
+- Option bid/ask come from live IBKR quotes when Gateway is up (OPRA, read-only), else
+  Yahoo's ~15-minute-delayed quotes, per contract. Each priced leg records `quote_source`;
+  fills at a delayed ask/bid are approximate, so split results by source if both occur.
 - `exit_planned` counts weekdays and ignores holidays; a position may close a day early.
 - Web research isn't reproducible: the analysts' searches are logged as their reports, not as
   raw pages. `claude -p` can't set temperature, so a rerun would differ.
 - The bull/bear debate is one round plus a rebuttal each; more rounds were not tested.
 
 ## Amendments
-(none)
+- 2026-11-05, before the first run (no journal day existed): **1-day calls added.** The
+  mandatory calls are now SPY and QQQ at 1, 5 and 20 trading days (close today to close
+  tomorrow for the 1-day). The 5-day calls stay the primary test. The 1-day calls are
+  secondary: telling a real 55% hit rate from 50% takes about 400 calls, so they get no PASS
+  before ~400 run days; they are KILLED at 120 run days if their hit rate is at or below
+  always-up. A split by scheduled macro event days (CPI, jobs, FOMC) is exploratory only.
+- 2026-11-05, before the first run (no journal day existed): schedule moved from 15:30 to
+  15:00 ET. Reason: the Alpaca competition follower (`agents/competition.py`) executes the
+  ideas right after the journal finishes, and a 10-15 minute run starting at 15:30 left too
+  little time for day orders before the close. Nothing else changed.
+- 2026-11-05, before the first run: option bid/ask for the legs the book prices and marks,
+  and for the packet's implied moves, come from live IBKR quotes first
+  (`datasources/ibkr_quotes.py`), falling back to Yahoo per contract. Expiries, strikes,
+  IV and daily closes still come from Yahoo. Reason: Yahoo's quotes are ~15 minutes old,
+  and the Alpaca follower trades against the same live quotes. `--no-ibkr` restores
+  Yahoo only.

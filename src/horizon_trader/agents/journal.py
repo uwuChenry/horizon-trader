@@ -1,7 +1,7 @@
 """Forecast journal: a TradingAgents-style team that writes down market views every trading day
 and a hypothetical book that scores them. FORWARD TEST ONLY; it never places an order.
 
-    uv run python -m horizon_trader.agents.journal run      # 15:30 ET: mark, analyse, decide
+    uv run python -m horizon_trader.agents.journal run      # 15:00 ET: mark, analyse, decide
     uv run python -m horizon_trader.agents.journal score    # mark/close positions, rescore only
     uv run python -m horizon_trader.agents.journal report   # print the scorecard
 
@@ -339,6 +339,11 @@ def main() -> None:
     p.add_argument("--date", default=datetime.now(NY).strftime("%Y-%m-%d"))
     p.add_argument("--analyst-model", default=MODELS["analyst"])
     p.add_argument("--model", default=MODELS["trader"], help="debate and trader model")
+    p.add_argument(
+        "--no-ibkr",
+        action="store_true",
+        help="Yahoo's delayed option quotes only (default: live IBKR quotes first)",
+    )
     a = p.parse_args()
     if a.command == "report":
         report()
@@ -349,7 +354,9 @@ def main() -> None:
         raise SystemExit(f"{a.date} is a weekend")
     if a.command == "run" and a.date != datetime.now(NY).strftime("%Y-%m-%d"):
         raise SystemExit("run only accepts today's New York date: past days are never back-filled")
-    market = YahooMarket()
+    from horizon_trader.datasources.ibkr_quotes import IBKRQuotes
+
+    market = YahooMarket(quotes=None if a.no_ibkr else IBKRQuotes(client_id=31))
     if a.command == "score":
         score(a.date, market)
     else:

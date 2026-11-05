@@ -46,6 +46,16 @@ def benchmark(symbol: str, index: pd.DatetimeIndex, start_equity: float) -> pd.S
     return b / b.iloc[0] * start_equity if len(b) else None
 
 
+IDEA_COLS = ["id", "date", "underlying", "structure", "confidence", "status", "qty", "limit",
+             "cost", "quote_source", "reason", "close_reason"]  # fmt: skip
+
+
+def is_option(symbol: str) -> bool:
+    """OCC-style option symbol (ROOT + YYMMDD + C/P + 8-digit strike), e.g. SPY261218C00770000."""
+    s = symbol
+    return len(s) >= 16 and s[-9] in "CP" and s[-8:].isdigit() and s[-15:-9].isdigit()
+
+
 def ledger(folder: Path) -> dict:
     eq = pd.read_csv(folder / "equity.csv", parse_dates=["date"]).set_index("date")["equity"]
     state = (
@@ -56,8 +66,10 @@ def ledger(folder: Path) -> dict:
     fills = pd.read_csv(folder / "fills.csv") if (folder / "fills.csv").exists() else None
     positions = []
     for symbol, qty in (state.get("holdings") or {}).items():
-        px = last_close(symbol)
+        option = is_option(symbol)
+        px = None if option else last_close(symbol)
         positions.append({"symbol": symbol, "shares": qty, "price": px,
+                          "unit": "contracts" if option else "shares",
                           "value": qty * px if px is not None else None})  # fmt: skip
     total = eq.iloc[-1] if len(eq) else None
     for p in positions:
@@ -86,6 +98,15 @@ def ledger(folder: Path) -> dict:
         "fills": None,
         "commissions": None,
     }
+    for pin in ("follow.json", "alpaca_account.json"):  # Alpaca ledgers record their account
+        if (folder / pin).exists():
+            out["account"] = json.loads((folder / pin).read_text(encoding="utf-8")).get("account")
+    if (folder / "follow.json").exists():  # the AI competition follower's idea log
+        records = json.loads((folder / "follow.json").read_text(encoding="utf-8"))["records"]
+        ideas = pd.DataFrame(
+            [{c: r.get(c) for c in IDEA_COLS} for r in records.values()], columns=IDEA_COLS
+        )
+        out["ideas"] = table(ideas.sort_values("id", ascending=False)) if len(ideas) else None
     if fills is not None and len(fills):
         recent = fills.iloc[::-1].head(200)
         out["fills"] = table(recent)
@@ -166,6 +187,8 @@ def health(today: date | None = None) -> list[dict]:
             "scanner capture",
         )
     )
+    chains = [d for d in (data / "ibkr" / "options").glob("????-??-??") if any(d.glob("*.parquet"))]
+    out.append(check("IBKR option-chain log", _latest_stem(chains), today, 1, "chain snapshot"))
     obs = observations(5)["last_connection"]
     if obs is None:
         out.append(
@@ -177,6 +200,11 @@ def health(today: date | None = None) -> list[dict]:
         detail = "connected" if ok else f"{obs.get('error') or obs.get('kind')}"
         out.append({"name": "IB Gateway", "status": "ok" if ok else "warn",
                     "detail": f"{detail} at {when} UTC", "last": when[:10]})  # fmt: skip
+    if (data / "journal").exists():  # a missing day usually means the Claude login expired
+        days = [d for d in (data / "journal" / "days").glob("????-??-??")
+                if (d / "decision.json").exists()]  # fmt: skip
+        out.append(check("Forecast journal (15:00, Claude login)", _latest_stem(days), today, 1,
+                         "journal decision"))  # fmt: skip
     runs = sorted(p.name for p in (data / "llm" / "fundamental_scores").glob("????-??-??"))
     if runs:
         last = date.fromisoformat(runs[-1])

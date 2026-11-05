@@ -154,6 +154,7 @@ class IBKRBroker:
         accepted = [o for o, t in zip(orders, trades, strict=True) if t not in rejected]
         self.ledger.add_pending(accepted, prices, asof)
         if rejected:
+            self.ledger.save()  # keep the accepted orders: their fills must be booked later
             msgs = "; ".join(
                 f"{t.contract.symbol}: {t.log[-1].message if t.log else t.orderStatus.status}"
                 for t in rejected

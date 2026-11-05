@@ -61,8 +61,41 @@ def test_nearest_expiry_and_implied_move():
     assert nearest_expiry(m.expiries("SPY"), "2026-11-05", 7) == "2026-11-13"
     assert nearest_expiry(m.expiries("SPY"), "2026-12-18", 7) is None
     mv = implied_move(m, "SPY", "2026-11-05")
-    assert mv.source == "mid" and 5 < mv.move_pct < 8  # straddle ~6.4 on a 100 stock
+    assert mv.source == "mid, yahoo" and 5 < mv.move_pct < 8  # straddle ~6.4 on a 100 stock
     assert implied_move(FakeMarket(live=False), "SPY", "2026-11-05").source == "last"
+
+
+class LiveFake(FakeMarket):
+    """IBKR has live quotes for some contracts only; the rest fall back to the chain's."""
+
+    def __init__(self, live_for, **kw):
+        super().__init__(**kw)
+        self.live_for, self.asked = live_for, []
+
+    def live_quotes(self, symbols):
+        self.asked.append(list(symbols))
+        return {s: (9.0, 9.5) for s in symbols if self.live_for(s)}
+
+
+def test_requote_prefers_live_and_falls_back_per_contract():
+    from horizon_trader.agents.market import requote
+
+    m = LiveFake(lambda s: "C" in s[-9:])  # live quotes for calls only
+    calls, puts = m.chain("SPY", "2026-11-13")
+    rows = requote(m, pd.concat([calls.head(1), puts.head(1)]))
+    assert list(rows["quote_source"]) == ["ibkr", "yahoo"]
+    assert rows.iloc[0]["bid"] == 9.0 and rows.iloc[1]["bid"] == puts.iloc[0]["bid"]
+    assert implied_move(m, "SPY", "2026-11-05").source == "mid, yahoo"  # one leg fell back
+    m_all = LiveFake(lambda s: True)
+    assert implied_move(m_all, "SPY", "2026-11-05").source == "mid, ibkr"
+
+
+def test_priced_legs_record_their_quote_source():
+    m = LiveFake(lambda s: True)
+    pos, why = book.resolve(IDEA, m, "2026-11-05", book.Rules(), 2_000.0, "x", "idea")
+    assert why == "ok" and pos["legs"][0]["quote_source"] == "ibkr" and pos["qty"] == 2
+    assert pos["unit_entry"] == 9.5  # bought at the live ask
+    assert book.mark(pos, m, book.Rules()) == 9.0 * 100 * pos["qty"]  # marked at the live bid
 
 
 def test_packet_has_table_vol_credit_and_moves():
@@ -245,7 +278,7 @@ def test_full_run_writes_everything_and_never_rebuilds(tmp_path, monkeypatch):
     }
     saved = json.loads((day / "decision.json").read_text(encoding="utf-8"))
     assert saved["prompt_sha"] == prompts.prompt_sha()
-    assert len(pd.read_csv(root / "forecasts.csv")) == 4
+    assert len(pd.read_csv(root / "forecasts.csv")) == 6
     assert json.loads((root / "summary.json").read_text())["ideas"]["opened"] == 1
     live = config.data_dir() / "live" / journal.LEDGER
     assert (live / "equity.csv").exists() and "holdings" in json.loads(
@@ -257,7 +290,7 @@ def test_full_run_writes_everything_and_never_rebuilds(tmp_path, monkeypatch):
 
 def test_validate_flags_missing_mandatory():
     d = {"forecasts": [{"ticker": "SPY", "horizon_days": 5, "benchmark": ""}]}
-    assert len(journal.validate(d)) == 3
+    assert len(journal.validate(d)) == 5
 
 
 def test_claude_cmd_tools():
@@ -278,7 +311,7 @@ def test_dashboard_journal_api(tmp_path, monkeypatch):
     journal.run("2026-11-05", FakeMarket(), _fake_runner([]))
     j = c.get("/api/journal").json()
     assert j["days"][0]["regime"] == "risk_off" and j["days"][0]["opened"] == 1
-    assert j["positions"]["total"] == 2 and j["forecasts"]["total"] == 4
+    assert j["positions"]["total"] == 2 and j["forecasts"]["total"] == 6
     assert j["summary"]["ideas"]["opened"] == 1 and len(j["equity"]) == 1
     d = c.get("/api/journal/2026-11-05").json()
     assert set(d["reports"]) >= {"news", "bear_rebuttal"} and "Market packet" in d["packet"]

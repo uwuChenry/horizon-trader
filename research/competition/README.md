@@ -232,7 +232,9 @@ be closed; the exact cutoff time remains pending organizer clarification.
 
 Owner's decision (2026-11-05): the AI entry follows the forecast journal
 ([research/forecast_journal](../forecast_journal/README.md)) instead of getting its own trader,
-at 2.5x the journal's sizing. `agents/competition.py` executes; the journal decides and stays
+first at 2.5x the journal's sizing, then (same day, before any trade) in a high-risk
+contest mode: the owner's view is that only large, convex bets can win a short
+winner-take-all contest, and a simulated wipeout is accepted. `agents/competition.py` executes; the journal decides and stays
 untouched, so its pre-registered test (prompts, rules, mirrors) is unchanged. The journal's
 protocol only sends ideas to Alpaca after an ideas PASS at 60+ days, which falls after
 December 31; this account is therefore a **separate experiment** and is reported separately,
@@ -241,16 +243,20 @@ not as evidence for or against the journal.
 | Rule | Value |
 |---|---|
 | What is traded | Journal ideas only, never the mirrors; opened only on the idea's decision date |
-| Option sizing | $375 debit per idea, $1,500 open debit in total (journal: $150 / $600) |
-| Shares sizing | $1,500 per idea, $3,000 open in total, fractional shares |
+| Option sizing | **High-risk contest mode (owner, 2026-11-05):** $1,000 debit per idea, $4,000 open in total (journal: $150 / $600) |
+| Shares sizing | $2,000 per idea, $4,000 open in total, fractional shares; cash limits options + shares together |
+| Shape | A debit-spread idea buys **only its long leg** (a capped payoff can't win a winner-take-all contest); ideas with confidence 1-2 get half the budget |
 | Entry | Day limit order at the current ask (spreads: one multi-leg order at the net debit); unfilled = missed, never retried |
 | Exit | Market orders, short leg first: when the journal closes, one trading day before expiry (no exercise or assignment), and everything from 2026-12-28 |
 | No new ideas | after 2026-12-23, or after 15:57 ET |
 | Guards | paper keys only, kill switch (`data/live/KILL`), same account as the first run, first run needs $1k-$10k equity, positions must reconcile, no new orders while one of ours is working |
 
+Quotes: live IBKR option quotes first (Gateway, read-only, client id 32), used only when
+IBKR has every leg of an idea; otherwise Alpaca's free indicative feed for all legs. Each
+record stores `quote_source`. Stock limits use Alpaca's IEX quote.
+
 Records: `data/live/competition_ai_paper/` (equity, fills with Alpaca's price next to the
-journal's modeled price, `follow.json` with every idea's status and reason). Limits: quotes come
-from Alpaca's free indicative options feed and IEX, and paper fills are simulated, so the fill
+journal's modeled price, `follow.json` with every idea's status and reason). Limits: paper fills are simulated, so the fill
 comparison is an execution check, not a measurement of live costs. The journal sizes for a $10k
 hypothetical account, so the 2.5x scaling is a sizing choice, not something the journal tested.
 

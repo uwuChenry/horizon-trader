@@ -9,7 +9,7 @@ import json
 STRUCTURES = [
     "long_call", "long_put", "call_debit_spread", "put_debit_spread", "shares_long", "none",
 ]  # fmt: skip
-MANDATORY = [("SPY", 5), ("SPY", 20), ("QQQ", 5), ("QQQ", 20)]
+MANDATORY = [("SPY", 1), ("SPY", 5), ("SPY", 20), ("QQQ", 1), ("QQQ", 5), ("QQQ", 20)]
 
 COMMON = """Today is {today}, {now} New York time. You are part of a research team that writes
 down market views BEFORE the outcome is known; every view is scored later against what
@@ -59,14 +59,14 @@ Report on large-cap US earnings (roughly the 100 largest companies, plus any lar
 
 DEBATE = {
     "bull": """# Role: bull researcher
-Make the strongest honest case that US stocks (SPY/QQQ) will be HIGHER in 5 and 20 trading
-days. Use the analyst reports below. Name the specific facts you rely on, what is already
+Make the strongest honest case that US stocks (SPY/QQQ) will be HIGHER tomorrow and in 5 and 20
+trading days. Use the analyst reports below. Name the specific facts you rely on, what is already
 priced in, and what would prove you wrong. Under 400 words. Do not hedge into neutrality:
 argue the bull side; a separate researcher argues the bear side.
 """,
     "bear": """# Role: bear researcher
-Make the strongest honest case that US stocks (SPY/QQQ) will be LOWER in 5 and 20 trading
-days. Use the analyst reports below. Name the specific facts you rely on, what is already
+Make the strongest honest case that US stocks (SPY/QQQ) will be LOWER tomorrow and in 5 and 20
+trading days. Use the analyst reports below. Name the specific facts you rely on, what is already
 priced in, and what would prove you wrong. Under 400 words. Do not hedge into neutrality:
 argue the bear side; a separate researcher argues the bull side.
 """,
@@ -86,8 +86,10 @@ You read the analyst reports and the bull/bear debate below and write today's de
 1. **Brief**: the regime (risk_on / neutral / risk_off), your bias in a few words, the thesis
    (<= 80 words), and what would invalidate it (<= 40 words). Say which side won the debate.
 2. **Forecasts**: you MUST give a direction (up/down) and confidence (1-5) for SPY and QQQ at
-   5 and 20 trading days (close today to close then). You may add up to 4 more on any US ticker
-   or ETF, optionally relative to SPY (benchmark "SPY" = the ticker beats/trails SPY).
+   1, 5 and 20 trading days (close today to close then; 1 = tomorrow's close, so it
+   includes tonight's after-hours news and tomorrow's scheduled events). You may add up to 4
+   more on any US ticker or ETF, optionally relative to SPY (benchmark "SPY" = the ticker
+   beats/trails SPY).
    Confidence 3 = a coin flip with a lean; 5 = rare, strong evidence. Over many days about half
    of all calls should be confidence 1-2.
 3. **Ideas**: 0 to {max_new} new trades. "No new trade" is the normal answer. Each idea is
@@ -124,7 +126,7 @@ SCHEMA = {
                 "type": "object",
                 "properties": {
                     "ticker": {"type": "string"},
-                    "horizon_days": {"type": "integer", "enum": [5, 20]},
+                    "horizon_days": {"type": "integer", "enum": [1, 5, 20]},
                     "direction": {"type": "string", "enum": ["up", "down"]},
                     "benchmark": {"type": "string", "enum": ["", "SPY"]},
                     "confidence": _CONF,

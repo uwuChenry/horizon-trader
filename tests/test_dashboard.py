@@ -157,6 +157,34 @@ def test_live_ledger_and_health(client):
     assert live["kill_switch"] is False
 
 
+def test_live_alpaca_follower_ledger_and_journal_health(client, tmp_path):
+    import json
+
+    from horizon_trader import config
+
+    data = config.data_dir()
+    d = data / "live" / "competition_ai_paper"
+    d.mkdir(parents=True)
+    pd.DataFrame({"date": ["2026-11-05"], "equity": [4_900.0], "cash": [3_900.0]}).to_csv(
+        d / "equity.csv", index=False
+    )
+    (d / "state.json").write_text(
+        json.dumps({"cash": 3_900.0, "holdings": {"SPY261218C00770000": 4}, "pending": []})
+    )
+    (d / "follow.json").write_text(json.dumps({"account": "PA9", "start": "2026-11-05", "records": {
+        "2026-11-05-1": {"id": "2026-11-05-1", "date": "2026-11-05", "underlying": "SPY",
+                         "structure": "long_call", "status": "open", "qty": 4, "cost": 840.0,
+                         "quote_source": "ibkr", "reason": "", "confidence": 4}}}))  # fmt: skip
+    (data / "journal" / "days" / "2026-11-04").mkdir(parents=True)  # started, no decision
+    live = client.get("/api/live").json()
+    comp = next(x for x in live["ledgers"] if x["name"] == "competition_ai_paper")
+    assert comp["kind"] == "paper" and comp["account"] == "PA9"
+    assert comp["positions"][0]["unit"] == "contracts" and comp["positions"][0]["price"] is None
+    assert comp["ideas"]["total"] == 1 and "quote_source" in comp["ideas"]["columns"]
+    journal = next(h for h in live["health"] if h["name"].startswith("Forecast journal"))
+    assert journal["status"] == "bad"  # a day folder without decision.json = a failed run
+
+
 def test_spa_fallback_serves_index_for_client_routes(tmp_path):
     dist = tmp_path / "dist"
     (dist / "assets").mkdir(parents=True)

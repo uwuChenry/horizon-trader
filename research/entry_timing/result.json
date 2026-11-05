@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "research:entry_timing",
+  "name": "Entry time of day for short swing trades",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "For 1-5 day longs in high-beta tech (2021-26), buying at 9:35, noon or 15:00 makes no reliable difference (15:00 minus 9:35: -10 bp, +0.5 bp by half). Buying before the close beat waiting for the next open only in 2024+ (+21 bp, t 3.0). 15:00 entries are fine.",
+  "tags": [
+    "intraday",
+    "timing",
+    "etf",
+    "stocks"
+  ],
+  "updated": "2026-11-05",
+  "start": "2021-10-04",
+  "end": "2026-11-02",
+  "report": "README.md",
+  "include": [
+    "*.md",
+    "*.csv"
+  ],
+  "code": [
+    "src/horizon_trader/intraday/entry_timing.py"
+  ]
+}

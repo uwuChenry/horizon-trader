@@ -62,12 +62,12 @@ See [the results format guide](docs/results.md).
 ## Forecast journal (LLM agents, forward test)
 
 ```bash
-uv run python -m horizon_trader.agents.journal run   # weekdays ~15:30 ET; needs a Claude Code login
+uv run python -m horizon_trader.agents.journal run   # weekdays ~15:00 ET; needs a Claude Code login
 ```
 
 Each trading day an LLM team (market, news and earnings analysts, a bull/bear debate, a trader)
 writes down SPY/QQQ calls and option-trade specs. Code prices them from live quotes, opens an
-opposite "mirror" trade as the control, and scores everything after 5 and 20 days. It never
+opposite "mirror" trade as the control, and scores everything after 1, 5 and 20 days. It never
 places an order. Rules: [research/forecast_journal/protocol.md](research/forecast_journal/protocol.md).
 
 ## Layout

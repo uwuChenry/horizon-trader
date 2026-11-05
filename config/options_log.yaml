@@ -1,0 +1,9 @@
+# Daily IBKR option-chain snapshot (datasources/ibkr_options_log.py, weekdays 15:40 ET).
+# Edit freely: each day's file records the settings it was captured with. Names the forecast
+# journal holds open positions in are added automatically.
+underlyings: [SPY, QQQ, IWM, SMH, NVDA, AAPL, MSFT, AMZN, META, GOOGL, AVGO, TSLA]
+weeklies: 4          # the next N expiries after today (0DTE excluded)
+monthlies: 2         # plus the next N standard monthly expiries (third Friday) beyond those
+band: 0.15           # strikes within +-15% of the underlying price ...
+grid_step: 0.01      # ... sampled at every 1% of moneyness (nearest listed strike) ...
+dense_band: 0.03     # ... plus every listed strike within +-3%

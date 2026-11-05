@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from horizon_trader.agents.market import Market, live, nearest_expiry
+from horizon_trader.agents.market import Market, live, nearest_expiry, requote
 
 
 @dataclass(frozen=True)
@@ -98,6 +98,8 @@ def resolve(
         if beyond.empty:
             return None, "no strike beyond the long leg for the spread"
         rows.append((_pick(beyond, long_row["strike"] + sign * width), -1))
+    fresh = requote(market, pd.DataFrame([r for r, _ in rows]))  # live bid/ask when available
+    rows = [(fresh.iloc[j], s) for j, (_, s) in enumerate(rows)]
     for row, _ in rows:
         if not live(row):
             return None, f"no live quote for {row['contractSymbol']} (market closed?)"
@@ -114,7 +116,8 @@ def resolve(
         {"type": "option", "symbol": r["contractSymbol"], "expiry": expiry,
          "strike": float(r["strike"]), "right": right, "side": s,
          "bid": float(r["bid"]), "ask": float(r["ask"]),
-         "iv": float(r.get("impliedVolatility", np.nan))}
+         "iv": float(r.get("impliedVolatility", np.nan)),
+         "quote_source": r.get("quote_source", "yahoo")}
         for r, s in rows
     ]  # fmt: skip
     return base | {
@@ -196,13 +199,19 @@ def mark(pos: dict, market: Market, rules: Rules) -> float | None:
         px = market.spot(pos["underlying"]) * (1 - side * rules.stock_slip)
         return side * pos["qty"] * px
     calls, puts = market.chain(pos["underlying"], pos["expiry"])
-    unit = 0.0
+    rows = []
     for leg in pos["legs"]:
         book = calls if leg["right"] == "C" else puts
         row = book[book["contractSymbol"] == leg["symbol"]]
-        if row.empty or not live(row.iloc[0]):
+        if row.empty:
             return None
-        unit += row.iloc[0]["bid"] if leg["side"] > 0 else -row.iloc[0]["ask"]
+        rows.append(row.iloc[0])
+    fresh = requote(market, pd.DataFrame(rows))
+    unit = 0.0
+    for leg, (_, row) in zip(pos["legs"], fresh.iterrows(), strict=True):
+        if not live(row):
+            return None
+        unit += row["bid"] if leg["side"] > 0 else -row["ask"]
     return max(unit, 0.0) * 100 * pos["qty"]
 
 
@@ -348,7 +357,7 @@ def summary(scored: pd.DataFrame, positions: list[dict]) -> dict:
     """Headline numbers for the dashboard and the protocol's pass/fail rules."""
     out: dict = {"forecasts": [], "by_confidence": [], "ideas": {}}
     done = scored.dropna(subset=["hit"]) if len(scored) else scored
-    for h in (5, 20):
+    for h in (1, 5, 20):
         for group, sub in (("SPY+QQQ (mandatory)", done[done["mandatory"]]), ("all", done)):
             sub = sub[sub["horizon_days"] == h]
             # Non-overlapping subsample for the t-stat: every h-th forecast per ticker.

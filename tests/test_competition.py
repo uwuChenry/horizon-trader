@@ -11,6 +11,7 @@ from horizon_trader.execution.alpaca_broker import NY, LegFill, OrderInfo
 DAY = "2026-11-05"
 AT = datetime(2026, 11, 5, 15, 45, tzinfo=NY)
 CALL, SHORT = "SPY261218C00770000", "SPY261218C00785000"
+SPREAD_RULES = C.Rules(uncap_spreads=False, premium_cap=375.0)  # the multi-leg spread path
 
 
 class FakeAlpaca:
@@ -94,17 +95,17 @@ def go(broker, positions, root, **kw):
                  **kw)  # fmt: skip
 
 
-def test_long_call_sized_at_2_5x_journal_budget(tmp_path):
+def test_long_call_sized_by_the_contest_budget(tmp_path):
     b = FakeAlpaca()
     s = go(b, [idea()], tmp_path)
     (spec,) = b.sent
-    assert spec.limit == 2.10 and spec.qty == 1  # $375 / $210 per contract -> 1
+    assert spec.limit == 2.10 and spec.qty == 4  # $1,000 / $210 per contract -> 4
     assert spec.legs[0].intent == "buy_to_open" and spec.client_id == "compai-2026-11-05-1-open"
     assert s["opened"] and C.load_state(tmp_path)["records"]["2026-11-05-1"]["status"] == "opening"
     b.quotes[CALL] = (1.00, 1.05)  # cheaper premium -> more contracts
     go(b, [idea(pid="2026-11-05-2", legs=[{"type": "option", "symbol": CALL, "side": 1,
               "bid": 1.0, "ask": 1.05}])], tmp_path)  # fmt: skip
-    assert b.sent[-1].qty == 3  # the $375 cap is per idea: 375 // 105
+    assert b.sent[-1].qty == 9  # the $1,000 cap is per idea: 1000 // 105
 
 
 def test_total_premium_cap(tmp_path):
@@ -113,7 +114,7 @@ def test_total_premium_cap(tmp_path):
     ideas = [idea(pid=f"2026-11-05-{i}") for i in range(1, 7)]
     go(b, ideas, tmp_path)
     spent = sum(s.qty * s.limit * 100 for s in b.sent)
-    assert spent <= 1_500 and len(b.sent) == 5  # 4 x $315, then $240 left -> 2 x $105
+    assert spent <= 4_000 and len(b.sent) == 5  # 4 x $945, then $220 left -> 2 x $105
 
 
 def test_debit_spread_is_one_multileg_limit_at_net_debit(tmp_path):
@@ -122,7 +123,7 @@ def test_debit_spread_is_one_multileg_limit_at_net_debit(tmp_path):
         {"type": "option", "symbol": SHORT, "side": -1, "bid": 0.8, "ask": 0.85},
     ]
     b = FakeAlpaca()
-    go(b, [idea(structure="call_debit_spread", legs=legs)], tmp_path)
+    go(b, [idea(structure="call_debit_spread", legs=legs)], tmp_path, rules=SPREAD_RULES)
     (spec,) = b.sent
     assert [lg.intent for lg in spec.legs] == ["buy_to_open", "sell_to_open"]
     assert spec.limit == pytest.approx(1.30) and spec.qty == 2  # 2.10 - 0.80; $375 // $130
@@ -132,7 +133,7 @@ def test_spread_needs_options_level_3(tmp_path):
     legs = [{"type": "option", "symbol": CALL, "side": 1}, {"type": "option", "symbol": SHORT,
             "side": -1}]  # fmt: skip
     b = FakeAlpaca(level=2)
-    s = go(b, [idea(structure="call_debit_spread", legs=legs)], tmp_path)
+    s = go(b, [idea(structure="call_debit_spread", legs=legs)], tmp_path, rules=SPREAD_RULES)
     assert not b.sent and "level 2 < 3" in s["skipped"][0]
 
 
@@ -142,7 +143,7 @@ def test_shares_idea_buys_fractional_shares_under_cap(tmp_path):
     stock["underlying"] = "NVDA"
     go(b, [stock], tmp_path)
     (spec,) = b.sent
-    assert spec.limit == round(200.0 * 1.002, 2) and spec.qty == pytest.approx(7.485, abs=1e-3)
+    assert spec.limit == round(200.0 * 1.002, 2) and spec.qty == pytest.approx(9.98, abs=1e-3)
     assert spec.legs[0].intent == ""
     b.stock["NVDA"] = (193.24, 209.70)  # a thin pre-market IEX quote seen on the real API
     s = go(b, [stock | {"id": "2026-11-05-2"}], tmp_path)
@@ -163,9 +164,16 @@ def test_journal_close_sells_short_leg_first_then_long(tmp_path):
     ]
     b = FakeAlpaca()
     p = idea(structure="call_debit_spread", legs=legs)
-    go(b, [p], tmp_path)
+    r = SPREAD_RULES
+    go(b, [p], tmp_path, rules=r)
     assert b.positions() == {CALL: 2, SHORT: -2}
-    go(b, [p | {"status": "closed", "exit_reason": "horizon"}], tmp_path, today="2026-11-12")
+    go(
+        b,
+        [p | {"status": "closed", "exit_reason": "horizon"}],
+        tmp_path,
+        today="2026-11-12",
+        rules=r,
+    )
     closes = b.sent[1:]
     assert [(s.legs[0].symbol, s.legs[0].intent, s.limit) for s in closes] == [
         (SHORT, "buy_to_close", None), (CALL, "sell_to_close", None)]  # fmt: skip
@@ -247,15 +255,30 @@ def test_ledger_files_for_the_dashboard(tmp_path):
     go(b, [idea()], tmp_path)
     d = tmp_path / C.LEDGER
     assert (d / "equity.csv").exists()
-    assert json.loads((d / "state.json").read_text())["holdings"] == {CALL: 1}
+    assert json.loads((d / "state.json").read_text())["holdings"] == {CALL: 4}
     go(b, [idea()], tmp_path, today="2026-11-06")  # sync books the entry fill
     import pandas as pd
 
     fills = pd.read_csv(d / "fills.csv")
-    assert fills.loc[0, "symbol"] == CALL and fills.loc[0, "quantity"] == 100
+    assert fills.loc[0, "symbol"] == CALL and fills.loc[0, "quantity"] == 400
     assert fills.loc[0, "price"] == 2.10 and fills.loc[0, "ref_price"] == 2.10
 
 
 def test_tick_rounding():
     assert C.tick_up(1.234, False) == 1.24 and C.tick_up(3.21, False) == 3.25
     assert C.tick_up(3.21, True) == 3.21
+
+
+def test_contest_mode_uncaps_spreads_and_halves_low_confidence(tmp_path):
+    legs = [
+        {"type": "option", "symbol": CALL, "side": 1, "bid": 2.0, "ask": 2.1},
+        {"type": "option", "symbol": SHORT, "side": -1, "bid": 0.8, "ask": 0.85},
+    ]
+    b = FakeAlpaca()
+    go(b, [idea(structure="call_debit_spread", legs=legs) | {"confidence": 4}], tmp_path)
+    (spec,) = b.sent
+    assert [lg.symbol for lg in spec.legs] == [CALL] and spec.qty == 4  # long leg only, $1,000
+    rec = C.load_state(tmp_path)["records"]["2026-11-05-1"]
+    assert rec["journal_structure"] == "call_debit_spread" and "uncapped" in rec["structure"]
+    go(b, [idea(pid="2026-11-05-2") | {"confidence": 2}], tmp_path)
+    assert b.sent[-1].qty == 2  # half budget: $500 // $210
