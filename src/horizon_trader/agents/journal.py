@@ -348,6 +348,7 @@ def main() -> None:
     if a.command == "report":
         report()
         return
+    config.require_ops(f"journal {a.command}")
     from horizon_trader.agents.market import YahooMarket, is_weekday
 
     if not is_weekday(a.date):

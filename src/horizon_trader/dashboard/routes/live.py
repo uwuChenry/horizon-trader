@@ -6,7 +6,6 @@ Read-only: nothing here talks to a broker or places an order.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -15,15 +14,9 @@ from fastapi import APIRouter
 from horizon_trader import config
 from horizon_trader.backtest import analytics as A
 from horizon_trader.dashboard.serialize import clean, points, table
+from horizon_trader.ops.health import health, observations
 
 router = APIRouter(prefix="/api/live")
-
-
-def business_days_between(a: date, b: date) -> int:
-    """Weekdays strictly after a up to and including b (holidays not excluded)."""
-    if b <= a:
-        return 0
-    return int(len(pd.bdate_range(a + timedelta(days=1), b)))
 
 
 def last_close(symbol: str) -> float | None:
@@ -115,109 +108,6 @@ def ledger(folder: Path) -> dict:
             "modeled": float(pd.to_numeric(fills["modeled_commission"], errors="coerce").sum()),
             "orders": int(len(fills)),
         }
-    return out
-
-
-def observations(days: int = 14) -> dict:
-    root = config.data_dir() / "live" / "observations"
-    files = sorted(root.glob("*.jsonl"))[-days:]
-    per_day, last_event = [], None
-    for f in files:
-        kinds: dict[str, int] = {}
-        for line in f.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                event = json.loads(line)
-            except ValueError:
-                continue
-            kinds[event.get("kind", "?")] = kinds.get(event.get("kind", "?"), 0) + 1
-            if event.get("kind") in {"connected", "connection_failed", "account"}:
-                last_event = event
-        per_day.append({"date": f.stem, "kinds": kinds})
-    return {"days": per_day, "last_connection": last_event}
-
-
-def check(name: str, last: date | None, today: date, warn_after: int, what: str) -> dict:
-    if last is None:
-        return {"name": name, "status": "bad", "detail": f"No {what} yet", "last": None}
-    lag = business_days_between(last, today)
-    status = "ok" if lag <= warn_after else "warn" if lag <= warn_after + 3 else "bad"
-    return {
-        "name": name,
-        "status": status,
-        "detail": f"Last {what} {last.isoformat()} ({lag} trading day{'s' * (lag != 1)} ago)",
-        "last": last.isoformat(),
-    }
-
-
-def _latest_stem(paths) -> date | None:
-    stems = []
-    for p in paths:
-        try:
-            stems.append(date.fromisoformat(p.stem))
-        except ValueError:
-            continue
-    return max(stems, default=None)
-
-
-def health(today: date | None = None) -> list[dict]:
-    today = today or datetime.now().date()
-    data = config.data_dir()
-    out = []
-    for folder in sorted((data / "live").glob("*/equity.csv")):
-        eq = pd.read_csv(folder, usecols=["date"], parse_dates=["date"])
-        last = eq["date"].max().date() if len(eq) else None
-        out.append(check(f"{folder.parent.name} ledger", last, today, 1, "ledger update"))
-    out.append(
-        check(
-            "Massive daily download",
-            _latest_stem((data / "massive" / "day").glob("*/*.parquet")),
-            today,
-            1,
-            "daily file",
-        )
-    )
-    out.append(
-        check(
-            "IBKR scanner log",
-            _latest_stem((data / "live" / "scanner").glob("*.json")),
-            today,
-            1,
-            "scanner capture",
-        )
-    )
-    chains = [d for d in (data / "ibkr" / "options").glob("????-??-??") if any(d.glob("*.parquet"))]
-    out.append(check("IBKR option-chain log", _latest_stem(chains), today, 1, "chain snapshot"))
-    obs = observations(5)["last_connection"]
-    if obs is None:
-        out.append(
-            {"name": "IB Gateway", "status": "bad", "detail": "No observations", "last": None}
-        )
-    else:
-        ok = obs.get("kind") in {"connected", "account"}
-        when = obs.get("observed_utc", "")[:16].replace("T", " ")
-        detail = "connected" if ok else f"{obs.get('error') or obs.get('kind')}"
-        out.append({"name": "IB Gateway", "status": "ok" if ok else "warn",
-                    "detail": f"{detail} at {when} UTC", "last": when[:10]})  # fmt: skip
-    if (data / "journal").exists():  # a missing day usually means the Claude login expired
-        days = [d for d in (data / "journal" / "days").glob("????-??-??")
-                if (d / "decision.json").exists()]  # fmt: skip
-        out.append(check("Forecast journal (15:00, Claude login)", _latest_stem(days), today, 1,
-                         "journal decision"))  # fmt: skip
-    runs = sorted(p.name for p in (data / "llm" / "fundamental_scores").glob("????-??-??"))
-    if runs:
-        last = date.fromisoformat(runs[-1])
-        due = (last.year, last.month) < (today.year, today.month)
-        out.append(
-            {
-                "name": "LLM fundamentals (monthly)",
-                "status": "warn" if due else "ok",
-                "detail": f"Last run {last.isoformat()}"
-                + (f"; {today:%B}'s run is due (never back-fill)" if due else ""),
-                "last": last.isoformat(),
-            }
-        )
     return out
 
 

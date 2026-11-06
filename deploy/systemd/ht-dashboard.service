@@ -1,0 +1,15 @@
+[Unit]
+Description=horizon-trader live dashboard
+
+[Service]
+Type=simple
+WorkingDirectory=%h/horizon-trader
+# Set HT_DASHBOARD_HOST to the mini PC's Tailscale IP (or 127.0.0.1).
+# There is no dashboard login: never bind 0.0.0.0 on a public network.
+EnvironmentFile=%h/horizon-trader/.env
+ExecStart=%h/horizon-trader/.venv/bin/python -m horizon_trader.dashboard --host ${HT_DASHBOARD_HOST} --port 8501
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

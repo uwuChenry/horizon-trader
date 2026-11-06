@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader evening health report
+
+[Timer]
+OnCalendar=Mon..Fri 18:30 America/New_York
+Unit=ht-health.service
+# A current health report is still useful after a reboot.
+Persistent=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

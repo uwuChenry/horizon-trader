@@ -24,7 +24,7 @@ from typing import Literal
 
 import pandas as pd
 
-from horizon_trader.config import DEFAULT_CONFIG, Settings, load_settings
+from horizon_trader.config import DEFAULT_CONFIG, Settings, load_settings, require_ops, role
 from horizon_trader.execution import Broker, Order, PaperBroker, compute_orders
 from horizon_trader.execution.costs import ibkr_costs
 from horizon_trader.execution.ledger import Ledger, fill_pending_at_open
@@ -35,6 +35,7 @@ log = logging.getLogger("horizon_trader")
 
 Mode = Literal["dry-run", "shadow", "what-if", "paper", "alpaca"]
 MODES: tuple[Mode, ...] = ("dry-run", "shadow", "what-if", "paper", "alpaca")
+STATEFUL_MODES = ("shadow", "paper", "alpaca")  # write a ledger or send orders: ops machine only
 BarFetcher = Callable[[list[str]], dict[str, pd.DataFrame]]  # {"open": ..., "close": ...}
 NY = "America/New_York"
 
@@ -239,17 +240,26 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--mode", choices=MODES, default="dry-run")
     parser.add_argument("--dry-run", action="store_true", help="same as --mode dry-run")
-    parser.add_argument("--kill", action="store_true",
-                        help="kill switch on, cancel open orders at IBKR and every Alpaca account")
+    parser.add_argument(
+        "--kill",
+        action="store_true",
+        help="kill switch on, cancel open orders at IBKR and every Alpaca account",
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if args.kill:
+        if role() != "ops":
+            log.warning("HT_ROLE=%s: the KILL file is local to this machine; run --kill on the "
+                        "ops machine too so its scheduled runs stop", role())  # fmt: skip
         kill_everything()
         return
     from horizon_trader.execution.ibkr_broker import GuardError
 
+    mode = "dry-run" if args.dry_run else args.mode
+    if mode in STATEFUL_MODES:
+        require_ops(f"run_daily --mode {mode}")
     try:
-        run(args.config, "dry-run" if args.dry_run else args.mode)
+        run(args.config, mode)
     except GuardError as e:
         raise SystemExit(f"STOPPED: {e}") from None
 

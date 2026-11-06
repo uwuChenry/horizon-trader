@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader evening jobs
+
+[Timer]
+OnCalendar=Mon..Fri 18:00 America/New_York
+Unit=ht-job@evening.service
+# Catch-up after a reboot is safe for these after-close runs.
+Persistent=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

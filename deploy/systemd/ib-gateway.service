@@ -1,0 +1,22 @@
+# TEMPLATE: verify paths and settings against the INSTALLED IBC version.
+# %h/ibc/gatewaystart.sh and %h/Jts are placeholders, not an IBC installer.
+# Configure IBC: TradingMode=paper, AutoRestartTime before 07:45 ET,
+# read-only API OFF (ReadOnlyApi=no), API port 4002 (OverrideTwsApiPort=4002).
+# Verify the launcher uses paper mode, the matching Gateway version and paths,
+# and maps .env TWS_USERID/TWS_PASSWORD to its credential settings; upstream
+# gatewaystart.sh does not automatically consume these environment names.
+# Check the Gateway/JVM time zone as well as TZ below. Weekly 2FA is MANUAL.
+[Unit]
+Description=IB Gateway paper via IBC and Xvfb
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Jts
+EnvironmentFile=%h/horizon-trader/.env
+Environment=TZ=America/New_York
+ExecStart=/usr/bin/xvfb-run -a %h/ibc/gatewaystart.sh -inline
+Restart=always
+RestartSec=120
+
+[Install]
+WantedBy=default.target

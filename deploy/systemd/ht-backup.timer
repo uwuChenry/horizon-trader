@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader daily ops data backup
+
+[Timer]
+OnCalendar=*-*-* 19:00 America/New_York
+Unit=ht-backup.service
+# Backing up the current data after a reboot is safe.
+Persistent=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader market observer
+
+[Timer]
+OnCalendar=Mon..Fri 09:24 America/New_York
+Unit=ht-job@observe.service
+# A late observer cannot recover the missed market session.
+Persistent=false
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

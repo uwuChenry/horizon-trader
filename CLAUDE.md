@@ -1,6 +1,8 @@
 # horizon-trader
 
-Personal systematic trading system. Python 3.12, managed with `uv`, runs on Windows now and on a Linux box later. Broker is IBKR.
+Personal systematic trading system. Python 3.12, managed with `uv`. Broker is IBKR.
+
+**Two machines** (`deploy/README.md`): an always-on Ubuntu mini PC with `HT_ROLE=ops` runs IB Gateway, every scheduled job, `orb_live` and the live dashboard, and is the **only writer** of `data/live`, `data/journal`, `data/ibkr/options`, `data/llm/fundamental_scores` and `data/logs`. The Windows main PC (`HT_ROLE=research`, the default) does coding, research and backtests and receives those folders read-only (Syncthing). Each machine downloads its own Massive data. The mini runs `master` only (`deploy/linux/deploy.sh`). Until the mini is set up, the main PC runs the jobs with `HT_ROLE=ops` in its `.env`. `config.require_ops()` guards every command that sends orders or writes forward-test state (run_daily shadow/paper/alpaca, orb_live, competition run, journal run/score, llm.fundamentals export/run, options and scanner capture, observe); dry-run, what-if, checks and reports work anywhere.
 
 ## Owner's constraints and goals
 - IBKR Pro account, **under $5k**. Mainly US stocks and ETFs; possibly small crypto and options later (options defined-risk only).
@@ -46,7 +48,11 @@ uv run python -m horizon_trader.intraday.scanner_log capture|compare  # log IBKR
 uv run python -m horizon_trader.intraday.orb_windows          # ORB with 10/15/30/60-minute ranges vs 5 (pre-registered; ~15 min first run)
 uv run python -m horizon_trader.intraday.orb_live run [--what-if]  # PAPER ORB executor: start before 9:30 ET; scanner -> exact relvol -> bracket (STP LMT + 1-ATR stop + MOC)
 uv run python -m horizon_trader.intraday.orb_live sync        # same evening: book ORB fills into data/live/orb, check flat
-powershell -File deploy/windows/install_tasks.ps1             # weekday Task Scheduler jobs: 08:00 Massive download + scanner log (+ monthly LLM scores if the month has none), 15:00 journal + competition follower, 18:00 shadow + Alpaca book + follower sync
+uv run python -m horizon_trader.ops.jobs morning|observe|journal|options_log|evening|llm_monthly [--dry] [--force]  # the scheduled jobs (steps in ops/jobs.py; skips weekends/NYSE holidays; logs data/logs/<date>-*.log)
+uv run python -m horizon_trader.ops.health [--notify] [--failed JOB]  # job health (same checks as the Live page); --notify pushes problems to ntfy (NTFY_TOPIC)
+deploy/linux/install.sh [--with-gateway]                        # mini PC: systemd --user timers (08:00 morning, 09:24 observe, 15:00 journal, 15:35 options, 18:00 evening, 18:30 health, 19:00 backup, ET)
+deploy/linux/deploy.sh [--force]                                # mini PC: pull master, sync, test (rolls back on failure), rebuild web, restart; refuses 09:24-16:05 ET
+powershell -File deploy/windows/install_tasks.ps1             # main PC until cutover: the same jobs via Task Scheduler (the .ps1 files call ops.jobs)
 uv run python -m horizon_trader.backtest.mix [--save]           # daily book + intraday sleeves: splits and overlays
 uv run python -m horizon_trader.backtest.megacap [--save]       # top 10/50/100 by point-in-time market cap vs SPY/QQQ/OEF/XLG
 uv run python -m horizon_trader.backtest.winners [--save]       # momentum top 10/20 among the point-in-time 200 largest, $5k net
@@ -247,4 +253,4 @@ Alpha research on ~100 large caps, 2010-2023: none of the 20 variants reached t 
   - Post-earnings-announcement drift: the classic version is dead in large caps since ~2006 (Martineau 2022). The text-based surprise (PEAD.txt, *JFQA* 2023) still drifts, which makes it the natural LLM use, forward-test only.
   - Earnings announcement premium (Frazzini & Lamont 2007; persists among the largest announcers) and return seasonalities (Keloharju et al. 2016): cheap daily-data tests. Ranking and dead ends are in `research/strategy_survey/README.md`; LLM-strategy papers are in `research/llm_strategies_survey/README.md`.
 - **Data:** yfinance returned no data for BK ("quote not found"), possibly transient. For proper stock-universe research, a point-in-time source with delisted names (e.g. Norgate) is the upgrade. For intraday history, the options are Massive (formerly Polygon.io) or Databento (usage-based, with $125 of free credits); IBKR historical bars are rate-limited.
-- **Deploy later:** `deploy/` has a Dockerfile, a docker-compose placeholder (the IB Gateway image and ports are unverified) and a systemd timer. Recommended host is an x86 mini PC or VPS, not a Jetson Nano.
+- **Mini PC (ordered, arriving soon):** systemd units, deploy/backup scripts and the cutover checklist are in `deploy/` (`deploy/README.md`). IBC settings in `ib-gateway.service` are unverified. The Dockerfile and docker-compose remain unused placeholders.

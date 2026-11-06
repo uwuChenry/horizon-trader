@@ -72,6 +72,28 @@ def load_settings(path: Path | str = DEFAULT_CONFIG) -> Settings:
         return Settings.model_validate(yaml.safe_load(f))
 
 
+Role = Literal["ops", "research"]
+
+
+def role() -> Role:
+    """This machine's role: `ops` (the always-on box: sends orders, owns forward-test state) or
+    `research` (everything else, the default). Set with HT_ROLE in .env."""
+    value = (os.environ.get("HT_ROLE") or "research").strip().lower()
+    if value not in ("ops", "research"):
+        raise SystemExit(f"HT_ROLE must be 'ops' or 'research', not {value!r}")
+    return value  # type: ignore[return-value]
+
+
+def require_ops(what: str) -> None:
+    """Refuse to send orders or write forward-test state anywhere but the ops machine, so two
+    machines never trade the same paper account or fork a ledger."""
+    if role() != "ops":
+        raise SystemExit(
+            f"refusing to {what}: this machine is HT_ROLE={role()}. Only the ops machine "
+            "(HT_ROLE=ops in its .env) sends orders or writes forward-test state."
+        )
+
+
 def data_dir() -> Path:
     """Root for Parquet/SQLite state: $HT_DATA_DIR if set, else ./data in the repo."""
     path = Path(os.environ.get("HT_DATA_DIR") or REPO_ROOT / "data")

@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader option-chain snapshot
+
+[Timer]
+OnCalendar=Mon..Fri 15:35 America/New_York
+Unit=ht-job@options_log.service
+# Late option quotes cannot reconstruct the intended intraday snapshot.
+Persistent=false
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -310,6 +310,9 @@ def main():
     args = parser.parse_args()
     if args.seconds <= 0:
         parser.error("--seconds must be positive")
+    from horizon_trader.config import require_ops
+
+    require_ops("write IBKR observations")
     capture(args.seconds, args.session)
 
 

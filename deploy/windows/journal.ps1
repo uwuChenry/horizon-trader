@@ -6,12 +6,8 @@
 # PAPER account (agents/competition.py; paper keys only, kill switch data/live/KILL). It runs
 # even if the journal failed, so planned closes (expiry eve, contest end) still happen.
 # Log: data/logs/<date>-competition.log
-$ErrorActionPreference = "Continue"
+# Steps now live in horizon_trader/ops/jobs.py.
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repo
-New-Item -ItemType Directory -Force "data/logs" | Out-Null
-$day = Get-Date -Format yyyy-MM-dd
-& uv run python -m horizon_trader.agents.journal run *>&1 |
-    Out-File -Append -Encoding utf8 "data/logs/$day-journal.log"
-& uv run python -m horizon_trader.agents.competition run *>&1 |
-    Out-File -Append -Encoding utf8 "data/logs/$day-competition.log"
+& uv run python -m horizon_trader.ops.jobs journal
+exit $LASTEXITCODE

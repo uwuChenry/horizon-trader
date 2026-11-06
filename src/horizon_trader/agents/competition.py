@@ -528,6 +528,10 @@ def main() -> None:
         return
     if a.keys != "ALPACA_COMPETITION_AI" and not (a.command == "run" and a.dry_run):
         raise SystemExit("--keys other than ALPACA_COMPETITION_AI only works with run --dry-run")
+    if a.command == "run" and not a.dry_run:
+        from horizon_trader.config import require_ops
+
+        require_ops("run the competition follower")
     from horizon_trader.agents import book, journal
     from horizon_trader.datasources.ibkr_quotes import IBKRQuotes
     from horizon_trader.execution.alpaca_broker import AlpacaPaper

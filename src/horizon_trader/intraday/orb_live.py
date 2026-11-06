@@ -340,7 +340,10 @@ def main() -> None:
     p.add_argument("action", choices=("run", "sync"))
     p.add_argument("--what-if", action="store_true", help="ask IBKR for margin/commission only")
     args = p.parse_args()
+    from horizon_trader.config import require_ops
     from horizon_trader.execution.ibkr_broker import GuardError
+
+    require_ops(f"orb_live {args.action}")
 
     try:
         run(args.what_if) if args.action == "run" else sync()

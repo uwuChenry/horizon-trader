@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader forecast journal
+
+[Timer]
+OnCalendar=Mon..Fri 15:00 America/New_York
+Unit=ht-job@journal.service
+# A late journal would use the wrong information and option quotes.
+Persistent=false
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

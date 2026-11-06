@@ -1,0 +1,10 @@
+[Unit]
+Description=horizon-trader ops data backup
+OnFailure=ht-notify@backup.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/horizon-trader
+ExecStart=/usr/bin/bash %h/horizon-trader/deploy/linux/backup.sh
+TimeoutStartSec=3h
+Nice=10

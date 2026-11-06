@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader morning downloads
+
+[Timer]
+OnCalendar=Mon..Fri 08:00 America/New_York
+Unit=ht-job@morning.service
+# Catch-up after a reboot is safe for downloads.
+Persistent=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -251,6 +251,9 @@ def main() -> None:
         df = check()
         print(df.to_string(index=False) if len(df) else "no snapshots yet")
         return
+    from horizon_trader.config import require_ops
+
+    require_ops("capture option chains")
     now = datetime.now(NY)
     if now.weekday() >= 5 or not (9 * 60 + 35 <= now.hour * 60 + now.minute <= 16 * 60):
         print("warning: outside 9:35-16:00 ET on a weekday; quotes will be missing or stale")

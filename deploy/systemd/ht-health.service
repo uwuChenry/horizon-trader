@@ -1,0 +1,10 @@
+[Unit]
+Description=horizon-trader health check and ntfy report
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/horizon-trader
+EnvironmentFile=%h/horizon-trader/.env
+Environment=PATH=%h/horizon-trader/.venv/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/horizon-trader/.venv/bin/python -m horizon_trader.ops.health --notify
+TimeoutStartSec=5min

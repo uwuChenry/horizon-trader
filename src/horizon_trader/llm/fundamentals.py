@@ -449,6 +449,10 @@ def main() -> None:
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument("--workers", type=int, default=4)
     args = p.parse_args()
+    if args.command in ("export", "run"):
+        from horizon_trader.config import require_ops
+
+        require_ops(f"llm.fundamentals {args.command}")
     if args.command == "export":
         export(args.asof)
     elif args.command == "run":

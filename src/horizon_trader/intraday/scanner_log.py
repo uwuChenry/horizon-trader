@@ -164,6 +164,10 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     p.add_argument("action", choices=("capture", "compare"))
     args = p.parse_args()
+    if args.action == "capture":
+        from horizon_trader.config import require_ops
+
+        require_ops("capture scanner lists")
     capture() if args.action == "capture" else compare()
 
 

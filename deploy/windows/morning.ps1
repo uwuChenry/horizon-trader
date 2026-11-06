@@ -2,22 +2,11 @@
 # 1. Download yesterday's Massive day + minute files (ORB history, scanner scoring).
 # 2. Score past scanner logs against the true ORB pick.
 # 3. Capture today's IBKR scanner lists at 9:25 and 9:35 (read-only; exits ~9:36).
-# Also starts llm_monthly.ps1 in the background after the day download (it exits at once
+# Also starts the llm_monthly job in the background after the day download (it exits at once
 # unless this month's Claude fundamental scores are still missing).
 # Needs IB Gateway running and logged in (paper). Log: data/logs/<date>-morning.log
-$ErrorActionPreference = "Continue"
+# Steps now live in horizon_trader/ops/jobs.py.
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repo
-New-Item -ItemType Directory -Force "data/logs" | Out-Null
-$log = "data/logs/$(Get-Date -Format yyyy-MM-dd)-morning.log"
-function Step($name, [string[]]$cmd) {
-    "=== $(Get-Date -Format HH:mm:ss) $name" | Out-File -Append -Encoding utf8 $log
-    & uv run python -m @cmd *>&1 | Out-File -Append -Encoding utf8 $log
-}
-Step "massive day" @("horizon_trader.datasources.massive", "download", "--dataset", "day")
-Start-Process powershell.exe -WindowStyle Hidden -ArgumentList `
-    "-NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\llm_monthly.ps1`""
-Step "massive minute" @("horizon_trader.datasources.massive", "download", "--dataset", "minute")
-Step "scanner compare" @("horizon_trader.intraday.scanner_log", "compare")
-Step "scanner capture" @("horizon_trader.intraday.scanner_log", "capture")
-"=== $(Get-Date -Format HH:mm:ss) done" | Out-File -Append -Encoding utf8 $log
+& uv run python -m horizon_trader.ops.jobs morning
+exit $LASTEXITCODE
