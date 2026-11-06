@@ -1,5 +1,5 @@
 # Weekday 15:00 job (Task Scheduler, New York time): the forecast journal. LLM analysts, debate
-# and trader via `claude -p` (needs this user's Claude Code login), then code prices and scores
+# and trader on GPT-6.1 Sol via `codex exec` (needs this user's Codex/ChatGPT login), then code prices and scores
 # a hypothetical book. The journal itself never places orders. Log: data/logs/<date>-journal.log
 #
 # Then the Alpaca competition follower executes the journal's new ideas in the AI competition

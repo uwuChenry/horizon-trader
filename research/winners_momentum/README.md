@@ -195,6 +195,23 @@ same guard.
    include the 2020 crash-and-rebound, momentum's classic danger zone), and forward-test it on
    the IBKR paper account. It fits the daily book's structure (a monthly sleeve of target weights).
 
+## Forward test (Alpaca paper, from 2026-11-05)
+The 12-1 top-10 variant runs on its own Alpaca **paper** account (`execution/momentum_book.py`,
+keys `ALPACA_MOMENTUM_*`, ledger `data/live/momentum_top10_alpaca_paper/`, virtual $5k,
+fractional shares). Same rule and timing as the backtest: the ranking is formed on the
+month-end close (Massive point-in-time caps), orders are sent in the 08:00 job and queue for
+the open, and the 2% band is re-applied daily. Checked 2026-11-05: the live ranking for the
+2026-10-30 formation equals the backtest's (DELL, HPE, INTC, LITE, MRNA, MRVL, MU, SNDK, STX,
+WDC). It started mid-month, on the October formation. Each formation's top 20 goes to
+`picks.csv`.
+
+**Split trap found while building it:** Massive's split list includes announced splits
+before they execute (SNDK 8-for-1 on 2026-11-20 was already there on 11-05). The research
+loader applies every listed split, so on 11-05 it priced SNDK at $130 instead of $1,037. Ratios,
+and so momentum, are unaffected; order sizes would not have been. The live runner ignores
+splits dated after today, sizes from actual closes, and scales its own holdings on the morning
+a split executes.
+
 ## Caveats
 
 - Under 4 years of test data, in one strong bull market.

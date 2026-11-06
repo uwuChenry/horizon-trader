@@ -293,6 +293,20 @@ def test_validate_flags_missing_mandatory():
     assert len(journal.validate(d)) == 5
 
 
+def test_auto_runner_picks_the_backend_by_model(monkeypatch):
+    got = []
+    monkeypatch.setattr(journal, "codex", lambda p, m, web, schema: got.append(("codex", m, web))
+                        or {"result": "x"})  # fmt: skip
+    monkeypatch.setattr(journal, "claude", lambda p, m, t, s: got.append(("claude", m, t))
+                        or {"result": "y"})  # fmt: skip
+    journal.auto("p", "gpt-6.1-sol", journal.WEB, None)
+    journal.auto("p", "gpt-6.1-sol", [], prompts.SCHEMA)
+    journal.auto("p", "claude-opus-5-5", journal.WEB, None)
+    assert got == [("codex", "gpt-6.1-sol", True), ("codex", "gpt-6.1-sol", False),
+                   ("claude", "claude-opus-5-5", journal.WEB)]  # fmt: skip
+    assert set(journal.MODELS.values()) == {"gpt-6.1-sol"}
+
+
 def test_claude_cmd_tools():
     assert journal.claude_cmd("m", [], None)[-2:] == ["--tools", ""]
     cmd = journal.claude_cmd("m", journal.WEB, prompts.SCHEMA)

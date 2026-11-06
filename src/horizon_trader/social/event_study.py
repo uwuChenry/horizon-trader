@@ -78,8 +78,8 @@ PRICE_START = date(2025, 5, 1)  # a month before the first post, for dollar volu
 # ---------------------------------------------------------------- prices
 
 
-def load_prices(tickers: set[str]) -> dict:
-    days = [d for d in massive.local_days("day") if d >= PRICE_START]
+def load_prices(tickers: set[str], start: date = PRICE_START) -> dict:
+    days = [d for d in massive.local_days("day") if d >= start]
     panels = F.load_daily_panels(days, tickers | set(BENCH))
     factor = F.split_factors(
         panels["close"].index, panels["close"].columns, massive_ref.load_splits()

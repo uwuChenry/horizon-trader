@@ -200,10 +200,10 @@ def health(today: date | None = None) -> list[dict]:
         detail = "connected" if ok else f"{obs.get('error') or obs.get('kind')}"
         out.append({"name": "IB Gateway", "status": "ok" if ok else "warn",
                     "detail": f"{detail} at {when} UTC", "last": when[:10]})  # fmt: skip
-    if (data / "journal").exists():  # a missing day usually means the Claude login expired
+    if (data / "journal").exists():  # missing day: Codex login expired?
         days = [d for d in (data / "journal" / "days").glob("????-??-??")
                 if (d / "decision.json").exists()]  # fmt: skip
-        out.append(check("Forecast journal (15:00, Claude login)", _latest_stem(days), today, 1,
+        out.append(check("Forecast journal (15:00, Codex login)", _latest_stem(days), today, 1,
                          "journal decision"))  # fmt: skip
     runs = sorted(p.name for p in (data / "llm" / "fundamental_scores").glob("????-??-??"))
     if runs:

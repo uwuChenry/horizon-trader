@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "research:brick_alerts",
+  "name": "Following bricktrades' Discord option alerts",
+  "kind": "research",
+  "status": "dead",
+  "verdict": "1,154 expired call/put alerts held to expiry: +9% mean (t 0.43), -3.3% at one contract each, 78% worthless; picks don't beat beta-adjusted QQQ (t 0.15); all gains from the Q2-Q3 2025 rebound, Dec 2025 on is significantly negative.",
+  "tags": [
+    "social",
+    "options",
+    "stocks"
+  ],
+  "updated": "2026-11-05",
+  "start": "2024-12-10",
+  "end": "2026-11-04",
+  "report": "README.md",
+  "include": [
+    "*.md",
+    "output.txt"
+  ],
+  "code": [
+    "src/horizon_trader/social/brick.py",
+    "src/horizon_trader/social/discord.py"
+  ]
+}

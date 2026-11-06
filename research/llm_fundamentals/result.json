@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "id": "research:llm_fundamentals",
-  "name": "Claude fundamental scores, monthly forward test (started 2026-10-01)",
+  "name": "LLM fundamental scores, monthly forward test (Claude from 2026-10-01, GPT-6.1 Sol from 2026-11-05)",
   "kind": "forward",
   "status": "running",
-  "verdict": "Monthly Claude scores of the 200 largest companies, forward test since 2026-10-01. PASS after 12 runs if mean 1-month rank IC > 0 (t > 1) and the top 20 beat equal weight; KILL if IC <= 0.",
+  "verdict": "Monthly LLM scores of the 200 largest companies, forward test: claude-opus-5-5 for 2 months, then gpt-6.1-sol from 2026-11-05 (a new test). PASS after 12 runs of one model if mean 1-month rank IC > 0 (t > 1) and the top 20 beat equal weight; KILL if IC <= 0.",
   "tags": [
     "llm",
     "stocks",
