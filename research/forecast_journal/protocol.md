@@ -38,9 +38,11 @@ Evaluated at 60 completed run days (about 3 months) and again at 120.
 ## Fixed setup
 - Schedule: weekdays at 15:00 ET (`deploy/windows/journal.ps1`). A missed day stays missed:
   `run` only accepts today's New York date and a finished day is never rebuilt.
-- Roles and models: analysts `claude-sonnet-5-5` (news and earnings with WebSearch/WebFetch,
-  market with no tools), debate and trader `claude-opus-5-5`, via `claude -p` with no saved
-  session and no MCP servers, run outside the repo so CLAUDE.md doesn't enter the prompt.
+- Roles and models: every role on `gpt-6.1-sol` via `codex exec` (see the 2026-11-05
+  amendment; originally analysts `claude-sonnet-5-5`, debate and trader `claude-opus-5-5` via
+  `claude -p`). News and earnings analysts get live web search; market, debate and trader get
+  no tools. No saved session, no user config or MCP servers, a read-only sandbox, run from an
+  empty temp directory so the repo's CLAUDE.md/AGENTS.md don't enter the prompt.
 - **A different model or any edit to `agents/prompts.py` (its `prompt_sha`) is a new test
   segment.** Every forecast row stores `prompt_sha` and `model`; evaluate segments separately
   (`summary.json` pools them, so split `scored_forecasts.csv` by `prompt_sha` when evaluating).
@@ -57,7 +59,9 @@ Evaluated at 60 completed run days (about 3 months) and again at 120.
   fills at a delayed ask/bid are approximate, so split results by source if both occur.
 - `exit_planned` counts weekdays and ignores holidays; a position may close a day early.
 - Web research isn't reproducible: the analysts' searches are logged as their reports, not as
-  raw pages. `claude -p` can't set temperature, so a rerun would differ.
+  raw pages. Neither `claude -p` nor `codex exec` can set temperature, so a rerun would differ.
+- Codex's web search only works through its code-mode host, so the two web analysts also get
+  read-only code execution (no shell, in an empty temp directory).
 - The bull/bear debate is one round plus a rebuttal each; more rounds were not tested.
 
 ## Amendments
@@ -77,3 +81,10 @@ Evaluated at 60 completed run days (about 3 months) and again at 120.
   IV and daily closes still come from Yahoo. Reason: Yahoo's quotes are ~15 minutes old,
   and the Alpaca follower trades against the same live quotes. `--no-ibkr` restores
   Yahoo only.
+- 2026-11-05 ~08:20 ET, before the first run (no journal day existed): **model changed from
+  Claude (Sonnet analysts, Opus debate and trader) to `gpt-6.1-sol` for every role**, run
+  through the Codex CLI on the owner's ChatGPT login (`llm/codex.py`, reasoning effort
+  `high`). Reason: to save the owner's Claude usage. The prompts, schema and rules are
+  unchanged (`prompt_sha` is the same); OpenAI's structured output adds
+  `additionalProperties: false` to each schema object, which allows the same answers. Claude
+  IDs still work (`--model claude-...`), and switching back would start a new segment.

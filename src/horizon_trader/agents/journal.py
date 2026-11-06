@@ -9,11 +9,12 @@ Pipeline (research/forecast_journal/README.md):
   market packet (code) -> analysts: market (packet only), news + earnings (web search)
   -> bull and bear cases -> rebuttals -> trader (JSON schema) -> risk check and pricing (code)
   -> book + mirrors -> scoring.
-Each role is one headless `claude -p` call (your Claude login, no API key), run from a temp
-directory so the repo's CLAUDE.md and research evidence don't leak into the prompt. Only the
-news and earnings analysts get tools (WebSearch, WebFetch). Every prompt, raw answer, model ID
-and prompt hash is saved under data/journal/days/<date>/ before any outcome exists, and a day is
-never rebuilt.
+Each role is one headless call, run from a temp directory so the repo's CLAUDE.md/AGENTS.md
+and research evidence don't leak into the prompt: `codex exec` for GPT models (the default since
+2026-11-05, GPT-6.1 Sol, your ChatGPT login; llm/codex.py) or `claude -p` for Claude models (your
+Claude login). No API keys. Only the news and earnings analysts get tools (web search). Every
+prompt, raw answer, model ID and prompt hash is saved under data/journal/days/<date>/ before any
+outcome exists, and a day is never rebuilt.
 """
 
 from __future__ import annotations
@@ -33,13 +34,16 @@ import pandas as pd
 from horizon_trader import config
 from horizon_trader.agents import book, prompts
 from horizon_trader.agents.market import Market, packet
+from horizon_trader.llm.codex import codex, is_codex_model
 
 NY = ZoneInfo("America/New_York")
-MODELS = {"analyst": "claude-sonnet-5-5", "debate": "claude-opus-5-5", "trader": "claude-opus-5-5"}
+# GPT-6.1 Sol via Codex since the first run day (2026-11-05). Claude IDs still work (claude -p);
+# a model change is a new test segment, like a prompt change.
+MODELS = {"analyst": "gpt-6.1-sol", "debate": "gpt-6.1-sol", "trader": "gpt-6.1-sol"}
 WEB = ["WebSearch", "WebFetch"]
 LEDGER = "journal_shadow"  # data/live/journal_shadow -> the dashboard's Live page
 
-# runner(prompt, model, tools, schema) -> the `claude -p --output-format json` wrapper dict
+# runner(prompt, model, tools, schema) -> a `claude -p --output-format json`-shaped wrapper dict
 Runner = Callable[[str, str, list[str], dict | None], dict]
 
 
@@ -68,6 +72,13 @@ def claude(prompt: str, model: str, tools: list[str], schema: dict | None) -> di
     if wrapper.get("is_error"):
         raise RuntimeError(f"claude -p failed: {str(wrapper.get('result'))[:300]}")
     return wrapper
+
+
+def auto(prompt: str, model: str, tools: list[str], schema: dict | None) -> dict:
+    """Codex for GPT models, Claude Code for Claude models; any tool means web search."""
+    if is_codex_model(model):
+        return codex(prompt, model, web=bool(tools), schema=schema)
+    return claude(prompt, model, tools, schema)
 
 
 def answer(wrapper: dict, structured: bool):
@@ -170,7 +181,7 @@ def append_forecasts(rows: list[dict]) -> None:
     new.to_csv(path, index=False)
 
 
-def run(today: str, market: Market, runner: Runner = claude, models: dict | None = None,
+def run(today: str, market: Market, runner: Runner = auto, models: dict | None = None,
         rules: book.Rules | None = None) -> dict:  # fmt: skip
     models = MODELS | (models or {})
     rules = rules or book.Rules()

@@ -41,7 +41,16 @@ NYSE_HOLIDAYS = frozenset(
         "2027-12-24",
     )
 )
-JOBS = ("morning", "observe", "journal", "options_log", "evening", "llm_monthly")
+JOBS = (
+    "morning",
+    "scanner",
+    "noise",
+    "observe",
+    "journal",
+    "options_log",
+    "evening",
+    "llm_monthly",
+)
 
 
 @dataclass(frozen=True)
@@ -83,10 +92,19 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
                 "morning",
                 background=True,
             ),
+            Step(
+                "momentum (Alpaca paper)",
+                "horizon_trader.execution.momentum_book",
+                ("run",),
+                "morning",
+            ),
             Step("massive minute", massive, ("download", "--dataset", "minute"), "morning"),
             Step("scanner compare", scanner, ("compare",), "morning"),
-            Step("scanner capture", scanner, ("capture",), "morning"),
         )
+    if job == "scanner":
+        return (Step("scanner capture", scanner, ("capture",), "scanner"),)
+    if job == "noise":
+        return (Step("qqq noise", "horizon_trader.intraday.noise_live", ("run",), "noise"),)
     if job == "observe":
         window = (
             "--start",

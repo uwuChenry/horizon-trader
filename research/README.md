@@ -7,7 +7,7 @@ Each study is a folder: `README.md` (verdict first), `result.json` (status, verd
 tags, period, artifacts), an optional `protocol.md` written before the results, and
 small evidence files. Large data stays under `data/` and is referenced as `data:...`.
 
-**1** core · **4** candidate · **1** running · **2** inconclusive · **2** idea · **14** reference · **15** dead
+**1** core · **4** candidate · **1** running · **2** inconclusive · **2** idea · **14** reference · **16** dead
 
 ## Core: trading or forward-testing now
 
@@ -28,7 +28,7 @@ small evidence files. Large data stays under `data/` and is referenced as `data:
 
 | Study | Verdict | Period | Tags |
 |---|---|---|---|
-| [Claude fundamental scores, monthly forward test (started 2026-10-01)](llm_fundamentals/README.md) | Monthly Claude scores of the 200 largest companies, forward test since 2026-10-01. PASS after 12 runs if mean 1-month rank IC > 0 (t > 1) and the top 20 beat equal weight; KILL if IC <= 0. |  | llm, stocks, fundamentals |
+| [LLM fundamental scores, monthly forward test (Claude from 2026-10-01, GPT-6.1 Sol from 2026-11-05)](llm_fundamentals/README.md) | Monthly LLM scores of the 200 largest companies, forward test: claude-opus-5-5 for 2 months, then gpt-6.1-sol from 2026-11-05 (a new test). PASS after 12 runs of one model if mean 1-month rank IC > 0 (t > 1) and the top 20 beat equal weight; KILL if IC <= 0. |  | llm, stocks, fundamentals |
 
 ## Inconclusive
 
@@ -68,6 +68,7 @@ small evidence files. Large data stays under `data/` and is referenced as `data:
 | Study | Verdict | Period | Tags |
 |---|---|---|---|
 | [Alpha formulas on ~100 large caps, 2010-2023](alphas/README.md) | None of 20 formula variants on ~100 large caps (2010-2023) reached t > 2 in the claimed direction; 12-1 momentum and 1-week reversal came closest at t ~ 1.95. |  | stocks, factors, llm |
+| [Following bricktrades' Discord option alerts](brick_alerts/README.md) | 1,154 expired call/put alerts held to expiry: +9% mean (t 0.43), -3.3% at one contract each, 78% worthless; picks don't beat beta-adjusted QQQ (t 0.15); all gains from the Q2-Q3 2025 rebound, Dec 2025 on is significantly negative. | 2024-12 to 2026-11 | social, options, stocks |
 | [Copy-trading Congress: does buying what members disclose beat SPY?](congress/README.md) | Buying every disclosed purchase after filing: 6.5% CAGR vs SPY 12.4% (alpha -6.7%/yr). Senate buys and $250k+ buys are hints for a pre-registered retest. |  | stocks, events |
 | [Two internet indicator rules: 5-minute 12-EMA and EMA9 × VWAP](ema_vwap/README.md) | 12-EMA stop-and-reverse loses after costs; EMA9 x VWAP long-only passed on SPY only (1 of 16 tests). At $5k everything loses to the $0.35 minimum. |  | intraday, etf, indicators |
 | [Entry time of day for short swing trades](entry_timing/README.md) | For 1-5 day longs in high-beta tech (2021-26), buying at 9:35, noon or 15:00 makes no reliable difference (15:00 minus 9:35: -10 bp, +0.5 bp by half). Buying before the close beat waiting for the next open only in 2024+ (+21 bp, t 3.0). 15:00 entries are fine. | 2021-10 to 2026-11 | intraday, timing, etf, stocks |

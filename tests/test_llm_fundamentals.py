@@ -124,19 +124,31 @@ def _score(t, s, sub=5, direction="stable"):
 
 def test_check_validates_and_logs_scores(tmp_path, monkeypatch):
     out, manifest = _manifest(tmp_path, monkeypatch)
-    assert LF.check("2026-10-01") is None  # nothing scored yet
+    assert LF.check("2026-10-01", "m") is None  # nothing scored yet
     LF.write_scores(out, "batch_01", [_score("AAA", 11)], "subagent", "m")
-    assert LF.validate(manifest, "batch_01", json.loads((out / "scores/batch_01.json").read_text()))
+    assert LF.validate(
+        manifest, "batch_01", json.loads((out / "scores/m/batch_01.json").read_text())
+    )
     LF.write_scores(out, "batch_01", [_score("AAA", 7), _score("BBB", 4)], "subagent", "m")
-    df = LF.check("2026-10-01")
+    df = LF.check("2026-10-01", "m")
     assert sorted(df["ticker"]) == ["AAA", "BBB"]
-    assert (out / "scores.parquet").exists()
+    assert (out / "scores_m.parquet").exists() and not (out / "scores.parquet").exists()
     assert set(df["model"]) == {"m"} and set(df["input_sha"]) == {"x", "y"}
     assert df.set_index("ticker")["has_filings"].to_dict() == {"AAA": True, "BBB": False}
 
 
+def _today(monkeypatch, iso):
+    class FakeDate(LF.date):
+        @classmethod
+        def today(cls):
+            return LF.date.fromisoformat(iso)
+
+    monkeypatch.setattr(LF, "date", FakeDate)
+
+
 def test_run_calls_headless_claude_with_tools_off(tmp_path, monkeypatch):
     out, _ = _manifest(tmp_path, monkeypatch)
+    _today(monkeypatch, "2026-10-01")
     (out / "batches" / "batch_01.md").write_text("prompt body")
     calls = []
 
@@ -146,15 +158,59 @@ def test_run_calls_headless_claude_with_tools_off(tmp_path, monkeypatch):
         return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
 
     monkeypatch.setattr(LF.subprocess, "run", fake_run)
-    LF.run("2026-10-01", model="claude-test", workers=1)
+    LF.run("2026-10-01", model=LF.LEGACY_MODEL, workers=1)
     cmd, prompt = calls[0]
-    assert cmd[:2] == ["claude", "-p"] and "claude-test" in cmd
+    assert cmd[:2] == ["claude", "-p"] and LF.LEGACY_MODEL in cmd
     assert cmd[cmd.index("--tools") + 1] == ""
     assert prompt == "prompt body"
-    rec = json.loads((out / "scores" / "batch_01.json").read_text())
+    rec = json.loads((out / "scores" / "batch_01.json").read_text())  # legacy flat layout
     assert rec["backend"] == "claude -p" and rec["scores"][0]["ticker"] == "AAA"
-    LF.run("2026-10-01", model="claude-test", workers=1)
+    _today(monkeypatch, "2026-10-02")  # resuming a started month the next day is fine
+    LF.run("2026-10-01", model=LF.LEGACY_MODEL, workers=1)
     assert len(calls) == 1  # finished batches are not re-scored
+
+
+def test_run_scores_with_codex_into_its_own_folder(tmp_path, monkeypatch):
+    out, _ = _manifest(tmp_path, monkeypatch)
+    _today(monkeypatch, "2026-10-01")
+    seen = []
+
+    def fake_codex(prompt, model, web, schema):
+        seen.append((model, web, schema is LF.SCHEMA))
+        return {"structured_output": {"scores": [_score("AAA", 6), _score("BBB", 3)]},
+                "reasoning_effort": "high", "usage": {"input_tokens": 10}}  # fmt: skip
+
+    monkeypatch.setattr(LF, "codex", fake_codex)
+    LF.run("2026-10-01", model="gpt-6.1-sol", workers=1)
+    assert seen == [("gpt-6.1-sol", False, True)]  # no tools, the scores schema
+    rec = json.loads((out / "scores" / "gpt-6.1-sol" / "batch_01.json").read_text())
+    assert rec["backend"] == "codex exec" and rec["usage"] == {"input_tokens": 10}
+    assert not (out / "scores" / "batch_01.json").exists()
+    df = LF.check("2026-10-01", "gpt-6.1-sol")
+    assert set(df["model"]) == {"gpt-6.1-sol"} and (out / "scores_gpt-6.1-sol.parquet").exists()
+
+
+def test_a_new_model_cannot_start_a_past_month(tmp_path, monkeypatch):
+    _manifest(tmp_path, monkeypatch)
+    _today(monkeypatch, "2026-11-05")
+    monkeypatch.setattr(LF, "codex", lambda *a, **k: pytest.fail("must not be called"))
+    with pytest.raises(SystemExit, match="no back-fill"):
+        LF.run("2026-10-01", model="gpt-6.1-sol", workers=1)
+
+
+def test_load_runs_keeps_models_apart(tmp_path, monkeypatch):
+    monkeypatch.setenv("HT_DATA_DIR", str(tmp_path))
+    for asof, name, model in [
+        ("2026-10-01", "scores.parquet", LF.LEGACY_MODEL),
+        ("2026-11-05", "scores.parquet", LF.LEGACY_MODEL),
+        ("2026-11-05", "scores_gpt-6.1-sol.parquet", "gpt-6.1-sol"),
+    ]:
+        out = LF.run_dir(asof)
+        out.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame([_score("AAA", 5)]).assign(model=model).to_parquet(out / name)
+    runs = LF.load_runs()
+    assert sorted(runs[LF.LEGACY_MODEL]) == ["2026-10-01", "2026-11-05"]
+    assert sorted(runs["gpt-6.1-sol"]) == ["2026-11-05"]
 
 
 def test_parse_claude_output_falls_back_to_result_text():

@@ -14,7 +14,11 @@ Design adapted from [TradingAgents](../tradingagents/README.md)
 ([arXiv 2412.20138](https://arxiv.org/abs/2412.20138)): separate analysts and a bull/bear
 debate, but risk is enforced by code and the evidence is forward only.
 
-## Pipeline (one run = 8 `claude -p` calls)
+## Pipeline (one run = 8 `codex exec` calls on GPT-6.1 Sol)
+Every role runs on `gpt-6.1-sol` through the Codex CLI (`llm/codex.py`, the owner's ChatGPT
+login, no API key). It was switched from Claude on 2026-11-05, before the first run, to save
+Claude usage (protocol amendment). Claude models still work via `--model`/`--analyst-model`.
+
 1. **Market packet** (code, `agents/market.py`): 21 ETFs (market, sectors, rates, credit,
    dollar, gold, oil, bitcoin) with 1/5/20-day returns, moving-average distance, 20-day vol
    and distance from the 52-week high; VIX and VIX3M term structure; HYG/IEF as a credit
@@ -36,8 +40,9 @@ uv run python -m horizon_trader.agents.journal report   # scorecard in the termi
 ```
 Scheduled by `deploy/windows/install_tasks.ps1` (job `horizon-trader journal`, weekdays 15:00
 machine time, which assumes the PC is on New York time like the other jobs). The PC must be on
-and logged in to Claude Code. Usage per run: 3 Sonnet analyst calls (2 with web search) and 5
-Opus calls; each role's cost is logged in `raw/<role>.json` and shown on the dashboard.
+and logged in to Codex (`codex login`, ChatGPT). Usage per run: 8 Sol calls, 2 of them with
+web search; each role's token usage is logged in `raw/<role>.json` (Claude runs also log a
+dollar cost, which the dashboard shows).
 
 Option bid/ask: live IBKR quotes first (IB Gateway must be running and logged in at 15:00;
 read-only, client id 31), Yahoo's ~15-minute-delayed quotes as the per-contract fallback.
@@ -49,7 +54,7 @@ while the reasoning and forecasts are still logged.
 
 ## Files (`data/journal/`, git-ignored)
 - `days/<date>/`: `packet.md`/`.json`, `reports/<role>.md`, `raw/<role>.prompt.md` and
-  `raw/<role>.json` (the full `claude -p` output: model, cost, turns), `decision.json` (the
+  `raw/<role>.json` (the full CLI output: model, tokens or cost, web searches), `decision.json` (the
   trader's answer, problems, how each idea was priced or why it was rejected).
 - `forecasts.csv` (every call with `prompt_sha` and model), `scored_forecasts.csv`,
   `book.json` (positions and mirrors), `marks.csv` (each run's mark per position),
@@ -63,4 +68,4 @@ reports and debate, the book).
 ## Log
 | Date | Notes |
 |---|---|
-| 2026-11-05 | Built and unit-tested with a fake market and a fake Claude; not yet run for real. |
+| 2026-11-05 | Built and unit-tested with a fake market and a fake Claude; not yet run for real. Switched to GPT-6.1 Sol via Codex before the first run; a real trader-schema call and a web-search call worked. |

@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader QQQ noise area (Alpaca paper, runs until ~16:05)
+
+[Timer]
+OnCalendar=Mon..Fri 09:25 America/New_York
+Unit=ht-job@noise.service
+# Joining mid-session skips earlier checks, which is not the rule being tested.
+Persistent=false
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

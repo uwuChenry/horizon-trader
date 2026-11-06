@@ -40,6 +40,7 @@ class OrderSpec:
     legs: tuple[Leg, ...]
     qty: float
     limit: float | None  # None = market order (single leg only)
+    tif: str = "day"  # "day", or "cls" = market-on-close (Alpaca: submit by 15:50 ET)
 
 
 @dataclass
@@ -90,7 +91,8 @@ def order_request(spec: OrderSpec):
     from alpaca.trading.enums import OrderClass, OrderSide, PositionIntent, TimeInForce
     from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, OptionLegRequest
 
-    common = {"qty": spec.qty, "time_in_force": TimeInForce.DAY, "client_order_id": spec.client_id}
+    common = {"qty": spec.qty, "time_in_force": TimeInForce(spec.tif),
+              "client_order_id": spec.client_id}  # fmt: skip
     if len(spec.legs) > 1:
         if spec.limit is None:
             raise ValueError("multi-leg orders are limit orders here")
@@ -172,6 +174,37 @@ class AlpacaPaper:
             StockLatestQuoteRequest(symbol_or_symbols=symbol, feed=DataFeed.IEX)
         )[symbol]
         return float(v.bid_price or 0), float(v.ask_price or 0)
+
+    def session(self, day: str) -> tuple[str, str] | None:
+        """(open, close) New York wall clock "HH:MM" of `day`'s regular session, None if the
+        market is closed that day (Alpaca's calendar knows holidays and 13:00 half days)."""
+        from alpaca.trading.requests import GetCalendarRequest
+
+        cal = self.trading.get_calendar(GetCalendarRequest(start=day, end=day))
+        if not cal or str(cal[0].date) != day:
+            return None
+        return cal[0].open.strftime("%H:%M"), cal[0].close.strftime("%H:%M")
+
+    def asset(self, symbol: str) -> dict:
+        a = self.trading.get_asset(symbol)
+        flags = ("tradable", "fractionable", "shortable", "easy_to_borrow")
+        return {f: bool(getattr(a, f)) for f in flags}
+
+    def minute_bars(self, symbol: str, start, end=None) -> list[dict]:
+        """Free IEX-feed 1-minute bars (one exchange's trades: a proxy for the consolidated
+        tape). Each: ts (bar start, NY), open, high, low, close, volume."""
+        from alpaca.data.enums import DataFeed
+        from alpaca.data.requests import StockBarsRequest
+        from alpaca.data.timeframe import TimeFrame
+
+        req = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Minute,
+                               start=start, end=end, feed=DataFeed.IEX)  # fmt: skip
+        bars = self.stocks.get_stock_bars(req).data.get(symbol, [])
+        return [
+            {"ts": b.timestamp.astimezone(NY), "open": float(b.open), "high": float(b.high),
+             "low": float(b.low), "close": float(b.close), "volume": float(b.volume)}
+            for b in bars
+        ]  # fmt: skip
 
     def order(self, client_id: str) -> OrderInfo | None:
         from alpaca.common.exceptions import APIError

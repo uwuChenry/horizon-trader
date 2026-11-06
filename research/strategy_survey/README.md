@@ -105,6 +105,8 @@ Noise area by year (bps/trade): 2021 +2.2, 2022 +6.9, 2023 +5.7, 2024 +3.0, 2025
   - QQQ is the open question: it held up after publication (Sharpe 1.02 at $5k Tiered). Treat it as a paper-trading candidate, not a result.
 - **Last half hour:** dead in this sample. The rest-of-day signal is negative after publication, and the first-half-hour signal is noise.
 
+**Forward test (built 2026-11-05):** QQQ noise area runs on its own Alpaca **paper** account (`intraday/noise_live.py`, keys `ALPACA_QQQ_NOISE_*`, ledger `data/live/qqq_noise_alpaca_paper/`, virtual $5k). The rule is the backtest at paper defaults: the same 14-day bands, checks at HH:00/HH:30 from 10:00, 2% vol target capped at 4x, whole shares, flat at the close via a market-on-close order. Checked 2026-11-05: the live code reproduces the backtest's bands, daily vol and all 72 check targets on the last 6 sessions. Today's open, check prices and VWAP come from IBKR's live 1-minute bars, with Alpaca's free IEX bars as the fallback (on 2026-11-05 the two agreed to within $0.25 on the open and $0.14 on VWAP). Differences from the backtest: IBKR's first-minute open stands in for the official open, fills are Alpaca's simulated paper fills at $0 commission, and the IBKR Tiered commission is logged alongside. Every check is logged in `checks.jsonl`. Judge it against QQQ buy-and-hold and the backtest's post-publication numbers. Paper fills aren't real fills, so slippage still needs a real-money or IBKR check.
+
 **Caveats**
 - About 4.5 years of data, only about 2.3 of them post-publication.
 - Slippage is a fixed per-share assumption, not measured. SPY's spread is 1c, so 0.5c is half the spread.

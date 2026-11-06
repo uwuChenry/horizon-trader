@@ -16,9 +16,12 @@ Use an Ubuntu user account with SSH access; run user services as that account, n
 root. Keep the mini awake, enable time synchronization, and install Git, uv,
 Node/npm (compatible with `web/package-lock.json`), `xvfb`, `xauth`, and restic.
 Install Tailscale on both PCs and use the mini's Tailscale IP for SSH/dashboard
-access. Install Claude Code as this user and log in interactively; verify
-`claude -p 'Reply OK'` works. The job units include `~/.local/bin` in `PATH`;
-put `claude` there or adjust the unit PATH for its installation.
+access. Install **both** LLM CLIs as this user and log in interactively: the journal
+and the monthly fundamental scores run on GPT-6.1 Sol through the **Codex CLI**
+(`codex exec`, the owner's ChatGPT login; verify `codex exec 'Reply OK'`), and
+Claude Code (`claude -p 'Reply OK'`) is the fallback for `--model claude-...`.
+The job units include `~/.local/bin` in `PATH`; put `codex` and `claude` there
+(e.g. an npm prefix of `~/.local`) or adjust the unit PATH.
 
 ```bash
 git clone <repository-url> ~/horizon-trader
@@ -43,7 +46,9 @@ backup script both read this file. Keep credentials out of Git and Syncthing.
 | `TWS_USERID`, `TWS_PASSWORD` | Paper login credentials, mapped into the installed IBC launcher as described below |
 | `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` | Alpaca **paper** keys |
 | `ALPACA_COMPETITION_AI_API_KEY`, `ALPACA_COMPETITION_AI_SECRET_KEY` | Competition paper account |
-| `ALPACA_DAILY_BOOK_API_KEY`, `ALPACA_DAILY_BOOK_SECRET_KEY` | Daily-book paper account; fill other `ALPACA_*` paper pairs from `.env.example` only for accounts in use |
+| `ALPACA_DAILY_BOOK_API_KEY`, `ALPACA_DAILY_BOOK_SECRET_KEY` | Daily-book paper account |
+| `ALPACA_MOMENTUM_API_KEY`, `ALPACA_MOMENTUM_SECRET_KEY` | Large-cap momentum paper account (08:00 morning step) |
+| `ALPACA_QQQ_NOISE_API_KEY`, `ALPACA_QQQ_NOISE_SECRET_KEY` | QQQ noise-area paper account (09:25 noise job) |
 | `MASSIVE_API_KEY`, `MASSIVE_S3_ACCESS_KEY`, `MASSIVE_S3_SECRET_KEY` | REST and flat-file credentials; each machine downloads its own Massive data |
 | `SEC_USER_AGENT` | Quoted application name and contact email |
 | `NTFY_TOPIC` | Topic used by health/failure notifications; subscribe on the owner's device |
@@ -97,6 +102,20 @@ If the old placeholder was installed system-wide, disable it with
 `sudo systemctl disable --now horizon-trader.timer horizon-trader.service`;
 the installer only removes obsolete **user** units.
 
+### One-time data copy from the main PC
+
+Besides the five ops folders (moved at cutover, below), copy these once; they
+are research data, never synced afterwards:
+
+| Folder | Size (Nov 2026) | Needed by |
+| --- | --- | --- |
+| `data/massive` | ~33 GB | momentum (day files, market caps, splits), noise bands and scanner scoring (minute files), ORB. Re-downloading 5 years on Starter is slow; copy over the LAN or a USB disk |
+| `data/sec` | ~180 MB | monthly LLM fundamental scores (first trading day of the month) |
+
+After the copy, `massive download --dataset day` and `--dataset minute` only
+fetch the missing days. Verify with `.venv/bin/python -m horizon_trader.intraday.noise_live check`
+and `.venv/bin/python -m horizon_trader.execution.momentum_book run --dry-run`.
+
 ## Deploy workflow
 
 Work on a branch, merge to `master`, push, then deploy to the mini:
@@ -130,8 +149,10 @@ days themselves; systemd timers select weekdays only.
 
 | Timer / job | Time | Catch up after downtime? |
 | --- | --- | --- |
-| `ht-morning` / `morning` | Mon-Fri 08:00 | Yes: downloads are safe to catch up |
+| `ht-morning` / `morning` | Mon-Fri 08:00 | Yes: downloads are safe to catch up; the momentum step refuses once the market is open |
+| `ht-scanner` / `scanner` | Mon-Fri 09:20 | No: the 09:25/09:35 lists cannot be recovered |
 | `ht-observe` / `observe` | Mon-Fri 09:24 | No: late observations cannot recover the session |
+| `ht-noise` / `noise` | Mon-Fri 09:25 (to ~16:05) | No: joining mid-session skips the rule's earlier checks |
 | `ht-journal` / `journal` | Mon-Fri 15:00 | No: late forecasts/quotes are wrong |
 | `ht-options_log` / `options_log` | Mon-Fri 15:35 | No: missed intraday quotes are unrecoverable |
 | `ht-evening` / `evening` | Mon-Fri 18:00 | Yes: after-close processing is safe to catch up |
@@ -141,7 +162,7 @@ days themselves; systemd timers select weekdays only.
 `morning` launches `llm_monthly` in the background itself; there is no monthly
 timer. Its drop-in preserves that child after the parent exits, so stopping
 `ht-job@morning.service` does **not** stop monthly scoring. Other jobs time out
-after 3h; observe gets 7h and restarts on failure after 120 seconds, with four
+after 3h; noise gets 8h; observe gets 7h and restarts on failure after 120 seconds, with four
 starts allowed per 8h. Inspect failures before using
 `systemctl --user reset-failed ht-job@observe.service` to clear that limit.
 `orb_live` is not scheduled: only the owner decides when to run it.
@@ -212,6 +233,8 @@ owner deliberately resumes.
       `Unregister-ScheduledTask -TaskName "horizon-trader *" -Confirm:$false`.
 - [ ] Stop Gateway on the main. Copy all five ops folders to the mini, retaining
       any KILL file; verify the copy before configuring one-way Syncthing.
+      Each Alpaca ledger pins its account (`data/live/*/alpaca_account.json`) and
+      reconciles against it, so the copied ledgers must be the latest ones.
 - [ ] Set `HT_ROLE=research` on the main and `HT_ROLE=ops` on the mini.
 - [ ] Verify IBC paper settings, credentials, display access, and manual 2FA on
       the mini. Check dashboard access over Tailscale and backup configuration.

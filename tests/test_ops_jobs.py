@@ -16,9 +16,15 @@ EXPECTED = {
     "morning": [
         ("run", "datasources.massive", ["download", "--dataset", "day"], "morning"),
         ("background", "ops.jobs", ["llm_monthly"], "morning"),
+        ("run", "execution.momentum_book", ["run"], "morning"),
         ("run", "datasources.massive", ["download", "--dataset", "minute"], "morning"),
         ("run", "intraday.scanner_log", ["compare"], "morning"),
-        ("run", "intraday.scanner_log", ["capture"], "morning"),
+    ],
+    "scanner": [
+        ("run", "intraday.scanner_log", ["capture"], "scanner"),
+    ],
+    "noise": [
+        ("run", "intraday.noise_live", ["run"], "noise"),
     ],
     "observe": [
         (
@@ -168,7 +174,9 @@ def test_competition_runs_after_journal_failure(failure, tmp_path):
     assert "exit 8" in log if isinstance(failure, int) else "OSError: cannot start journal" in log
 
 
-@pytest.mark.parametrize("job", ["morning", "journal", "options_log", "evening"])
+@pytest.mark.parametrize(
+    "job", ["morning", "scanner", "noise", "journal", "options_log", "evening"]
+)
 def test_counted_failures_return_one_and_continue(job):
     fake = FakeRunner([4])
     assert jobs.run_job(job, TODAY, fake, background_launcher=fake.background) == 1
@@ -314,7 +322,7 @@ def test_background_launch_exception_is_logged_and_morning_continues(tmp_path):
 
     assert jobs.run_job("morning", TODAY, fake, background_launcher=broken_launcher) == 1
     assert len(fake.calls) == 4
-    assert fake.calls[-1][1][-1] == "capture"
+    assert fake.calls[-1][1][-1] == "compare"
     log = (tmp_path / "logs" / f"{TODAY}-morning.log").read_text(encoding="utf-8")
     assert "llm monthly failed: OSError: cannot detach" in log
 

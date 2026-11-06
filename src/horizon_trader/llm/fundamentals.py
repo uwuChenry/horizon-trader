@@ -1,15 +1,20 @@
-"""Monthly Claude fundamental scores for the 200 largest US companies: a FORWARD test.
+"""Monthly LLM fundamental scores for the 200 largest US companies: a FORWARD test.
 
     uv run python -m horizon_trader.llm.fundamentals export [--asof YYYY-MM-DD]  # build batches
-    uv run python -m horizon_trader.llm.fundamentals run [--model M] [--workers 4]  # claude -p
-    uv run python -m horizon_trader.llm.fundamentals check                       # validate + log
+    uv run python -m horizon_trader.llm.fundamentals run [--model M] [--workers 4]  # codex/claude
+    uv run python -m horizon_trader.llm.fundamentals check [--model M]           # validate + log
     uv run python -m horizon_trader.llm.fundamentals evaluate                    # IC, top 20
 
 `--asof` defaults to today. Batches can be scored two ways, and both write the same files:
-`run` calls headless Claude Code (`claude -p`, your Claude login, no API key, all tools off),
-or Claude Code subagents read batches/batch_NN.md and write scores/batch_NN.json themselves.
-Everything lives under <data_dir>/llm/fundamental_scores/<asof>/ and a finished month is
-never overwritten (`export` refuses), so the log is append-only.
+`run` calls a headless CLI with every tool off and no API key: `codex exec` for GPT models
+(the default from 2026-11-05, GPT-6.1 Sol, your ChatGPT login; llm/codex.py) or `claude -p` for
+Claude models (your Claude login). Claude Code subagents can also read batches/batch_NN.md and
+write scores/batch_NN.json themselves (the claude-opus-5-5 layout).
+Everything lives under <data_dir>/llm/fundamental_scores/<asof>/: the inputs once per month,
+then one score folder per model (scores/ for claude-opus-5-5, which scored 2026-10-01 and
+2026-11-05; scores/<model>/ for any other) and scores[_<model>].parquet. A finished month is
+never overwritten (`export` refuses) and a model can only START scoring a month on its as-of
+date, so the log is append-only and nothing is back-filled.
 
 What Claude sees per company (all filed BEFORE the as-of date, nothing later):
   - the last 8 fiscal quarters from SEC XBRL, as first reported: revenue, revenue growth vs a
@@ -28,7 +33,8 @@ Pre-registered (2026-10-01, before any score existed; research/llm_fundamentals/
              PASS if the mean 1-month rank IC is > 0 with t > 1 AND the top 20 by score beat
              the 200-name equal-weight universe on average monthly return
              KILL if the mean 1-month rank IC is <= 0
-  rules      a different model is a new test (the model ID is logged with every score);
+  rules      a different model is a new test (the model ID is logged with every score;
+             `evaluate` reports each model separately);
              never back-fill past months (the model may know what happened next)
 Power: a realistic IC of 0.02-0.05 needs years to prove; 12 months mainly rejects a bad signal.
 """
@@ -48,10 +54,12 @@ import numpy as np
 import pandas as pd
 
 from horizon_trader.config import data_dir
+from horizon_trader.llm.codex import codex, is_codex_model
 
 UNIVERSE = 200
 BATCH = 10
-DEFAULT_MODEL = "claude-opus-5-5"
+DEFAULT_MODEL = "gpt-6.1-sol"  # since 2026-11-05; claude-opus-5-5 scored 2026-10-01 and 11-05
+LEGACY_MODEL = "claude-opus-5-5"  # its scores sit directly in scores/
 MDNA_CHARS = 10_000
 RELEASE_CHARS = 8_000
 HORIZONS = {"1m": 21, "3m": 63}
@@ -264,14 +272,37 @@ def parse_claude_output(stdout: str) -> list[dict]:
     return data["scores"]
 
 
+def scores_dir(out: Path, model: str) -> Path:
+    return out / "scores" if model == LEGACY_MODEL else out / "scores" / model
+
+
+def scores_parquet(out: Path, model: str) -> Path:
+    return out / ("scores.parquet" if model == LEGACY_MODEL else f"scores_{model}.parquet")
+
+
 def run(asof: str, model: str = DEFAULT_MODEL, workers: int = 4) -> None:
     out = run_dir(asof)
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    todo = [b for b in manifest["batches"] if not (out / "scores" / f"{b}.json").exists()]
+    sdir = scores_dir(out, model)
+    started = sdir.exists() and any(sdir.glob("batch_*.json"))
+    if not started and asof != date.today().isoformat():
+        raise SystemExit(f"{model} has no scores for {asof}; a model only starts a month on its "
+                         "as-of date (no back-fill)")  # fmt: skip
+    sdir.mkdir(parents=True, exist_ok=True)
+    todo = [b for b in manifest["batches"] if not (sdir / f"{b}.json").exists()]
     print(f"{len(todo)} of {len(manifest['batches'])} batches to score with {model}")
 
     def one(b: str) -> str:
         prompt = (out / "batches" / f"{b}.md").read_text(encoding="utf-8")
+        if is_codex_model(model):
+            try:
+                wrapper = codex(prompt, model, web=False, schema=SCHEMA)
+            except (RuntimeError, ValueError, subprocess.TimeoutExpired) as e:
+                return f"{b}: {str(e)[:200]}"
+            write_scores(out, b, wrapper["structured_output"]["scores"], "codex exec", model,
+                         extra={"reasoning_effort": wrapper["reasoning_effort"],
+                                "usage": wrapper["usage"]})  # fmt: skip
+            return f"{b}: ok"
         proc = subprocess.run(
             claude_cmd(model), input=prompt, capture_output=True, text=True, encoding="utf-8",
             timeout=1800, check=False,
@@ -286,14 +317,18 @@ def run(asof: str, model: str = DEFAULT_MODEL, workers: int = 4) -> None:
             print(" ", msg, flush=True)
 
 
-def write_scores(out: Path, batch: str, scores: list[dict], backend: str, model: str) -> None:
+def write_scores(out: Path, batch: str, scores: list[dict], backend: str, model: str,
+                 extra: dict | None = None) -> None:  # fmt: skip
     rec = {
         "backend": backend,
         "model": model,
         "scored_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        **(extra or {}),
         "scores": scores,
     }
-    (out / "scores" / f"{batch}.json").write_text(json.dumps(rec, indent=1), encoding="utf-8")
+    sdir = scores_dir(out, model)
+    sdir.mkdir(parents=True, exist_ok=True)
+    (sdir / f"{batch}.json").write_text(json.dumps(rec, indent=1), encoding="utf-8")
 
 
 def validate(manifest: dict, batch: str, rec: dict) -> list[str]:
@@ -330,12 +365,12 @@ def has_filings(block: str) -> bool:
     return "| quarter end |" in block or "excerpt:" in block
 
 
-def check(asof: str) -> pd.DataFrame | None:
+def check(asof: str, model: str = DEFAULT_MODEL) -> pd.DataFrame | None:
     out = run_dir(asof)
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
     rows, problems = [], {}
     for b in manifest["batches"]:
-        path = out / "scores" / f"{b}.json"
+        path = scores_dir(out, model) / f"{b}.json"
         if not path.exists():
             problems[b] = ["not scored yet"]
             continue
@@ -356,13 +391,13 @@ def check(asof: str) -> pd.DataFrame | None:
                  "has_filings": has_filings(blocks.get(s["ticker"], ""))}
             )  # fmt: skip
     done = len(manifest["batches"]) - len(problems)
-    print(f"{asof}: {done}/{len(manifest['batches'])} batches valid")
+    print(f"{asof} {model}: {done}/{len(manifest['batches'])} batches valid")
     for b, errs in problems.items():
         print(f"  {b}: {'; '.join(errs[:3])}")
     if problems:
         return None
     df = pd.DataFrame(rows)
-    df.to_parquet(out / "scores.parquet", index=False)
+    df.to_parquet(scores_parquet(out, model), index=False)
     no_data = df.loc[~df["has_filings"], "ticker"].tolist()
     print(f"no filings (excluded from evaluation): {', '.join(no_data) or 'none'}")
     print(df["score"].value_counts().sort_index().to_string())
@@ -421,24 +456,36 @@ def _closes(tickers: set[str], since: str) -> pd.DataFrame:
     return panels["close"] * factor
 
 
-def evaluate() -> None:
+def load_runs() -> dict[str, dict[str, pd.DataFrame]]:
+    """{model: {asof: scores}} from every finished month (each model is its own test)."""
     base = data_dir() / "llm" / "fundamental_scores"
-    runs = {p.parent.name: pd.read_parquet(p) for p in sorted(base.glob("*/scores.parquet"))}
-    if not runs:
+    out: dict[str, dict[str, pd.DataFrame]] = {}
+    for p in sorted(base.glob("*/scores*.parquet")):
+        df = pd.read_parquet(p)
+        out.setdefault(str(df["model"].iloc[0]), {})[p.parent.name] = df
+    return out
+
+
+def evaluate() -> None:
+    by_model = load_runs()
+    if not by_model:
         print("no finished runs yet")
         return
-    tickers = set().union(*[set(df["ticker"]) for df in runs.values()])
-    table = evaluate_runs(runs, _closes(tickers, min(runs)))
     pd.set_option("display.width", 200)
-    print(table.to_string(float_format=lambda v: f"{v:+.3f}"))
-    ic = table["IC 1m"].dropna()
-    print(f"\n{len(ic)} months with a 1-month result (verdict needs 12).", end=" ")
-    if len(ic) > 2:
-        t = ic.mean() / ic.std() * np.sqrt(len(ic))
-        excess = (table[f"top{TOP} 1m"] - table["universe 1m"]).dropna().mean()
-        print(f"Mean IC {ic.mean():+.3f} (t {t:+.2f}); top {TOP} minus universe "
-              f"{excess:+.2%}/month")  # fmt: skip
-    else:
+    for model, runs in by_model.items():
+        tickers = set().union(*[set(df["ticker"]) for df in runs.values()])
+        table = evaluate_runs(runs, _closes(tickers, min(runs)))
+        print(f"=== {model}")
+        print(table.to_string(float_format=lambda v: f"{v:+.3f}"))
+        ic = table["IC 1m"].dropna()
+        print(f"{len(ic)} months with a 1-month result (verdict needs 12).", end=" ")
+        if len(ic) > 2:
+            t = ic.mean() / ic.std() * np.sqrt(len(ic))
+            excess = (table[f"top{TOP} 1m"] - table["universe 1m"]).dropna().mean()
+            print(f"Mean IC {ic.mean():+.3f} (t {t:+.2f}); top {TOP} minus universe "
+                  f"{excess:+.2%}/month")  # fmt: skip
+        else:
+            print()
         print()
 
 
@@ -458,7 +505,7 @@ def main() -> None:
     elif args.command == "run":
         run(args.asof, args.model, args.workers)
     elif args.command == "check":
-        check(args.asof)
+        check(args.asof, args.model)
     else:
         evaluate()
 

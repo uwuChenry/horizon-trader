@@ -1,11 +1,13 @@
-# Weekday morning job (Task Scheduler, 08:00 New York time; this PC's clock is Eastern).
-# 1. Download yesterday's Massive day + minute files (ORB history, scanner scoring).
-# 2. Score past scanner logs against the true ORB pick.
-# 3. Capture today's IBKR scanner lists at 9:25 and 9:35 (read-only; exits ~9:36).
-# Also starts the llm_monthly job in the background after the day download (it exits at once
-# unless this month's Claude fundamental scores are still missing).
-# Needs IB Gateway running and logged in (paper). Log: data/logs/<date>-morning.log
-# Steps now live in horizon_trader/ops/jobs.py.
+# Weekday morning job (Task Scheduler, 08:00 New York time; this PC's clock must be Eastern).
+# Steps live in horizon_trader/ops/jobs.py:
+# 1. Download yesterday's Massive day file.
+# 2. Start llm_monthly in the background (exits at once unless this month's LLM fundamental
+#    scores are still missing; GPT-6.1 Sol via codex exec).
+# 3. Large-cap momentum on its Alpaca PAPER account (execution/momentum_book.py): yesterday's
+#    close -> market orders queued for today's open. Refuses once the market is open.
+# 4. Download yesterday's minute file (ORB history, scanner scoring, QQQ noise bands).
+# 5. Score past scanner logs against the true ORB pick.
+# (Today's scanner capture is its own 09:20 job.) Log: data/logs/<date>-morning.log
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repo
 & uv run python -m horizon_trader.ops.jobs morning

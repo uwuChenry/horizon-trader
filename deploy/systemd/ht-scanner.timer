@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader IBKR scanner log (09:25 and 09:35 lists)
+
+[Timer]
+OnCalendar=Mon..Fri 09:20 America/New_York
+Unit=ht-job@scanner.service
+# A late start misses the 09:25/09:35 snapshots; nothing to catch up.
+Persistent=false
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
