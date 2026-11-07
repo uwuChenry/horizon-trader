@@ -1,21 +1,20 @@
 """Health of the always-on jobs, shared by the dashboard's Live page and the ops alerts.
 
     uv run python -m horizon_trader.ops.health                      # print every check
-    uv run python -m horizon_trader.ops.health --notify             # push anything not ok to ntfy
+    uv run python -m horizon_trader.ops.health --notify             # alert anything not ok
+    uv run python -m horizon_trader.ops.health --notify --daily     # ... or say "all OK" (18:30)
     uv run python -m horizon_trader.ops.health --notify --failed X  # job X failed: add its log tail
 
---notify posts to https://ntfy.sh/<NTFY_TOPIC> (or NTFY_URL, for a self-hosted server). The
-topic name is the only secret, so pick a long random one. Read-only otherwise: nothing here
-talks to a broker.
+--notify sends through ops.notify: a Discord webhook (DISCORD_WEBHOOK_URL, @mention on urgent
+alerts with DISCORD_USER_ID) and/or ntfy (NTFY_TOPIC). Read-only otherwise: nothing here talks
+to a broker.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
-import urllib.request
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -188,34 +187,27 @@ def message(rows: list[dict], failed: str | None = None, today: date | None = No
     return title, "\n".join(lines).strip(), "high" if bad else "default"
 
 
-def push(title: str, body: str, priority: str = "default") -> None:
-    topic = os.environ.get("NTFY_TOPIC")
-    if not topic:
-        raise SystemExit("NTFY_TOPIC is not set in .env; can't push")
-    url = os.environ.get("NTFY_URL", "https://ntfy.sh").rstrip("/") + "/" + topic
-    req = urllib.request.Request(
-        url,
-        data=body.encode("utf-8")[:4000],
-        headers={
-            "Title": title.encode("ascii", "replace").decode(),
-            "Priority": priority,
-            "Tags": "warning",
-        },  # fmt: skip
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        resp.read()
+def push(title: str, body: str, priority: str = "default") -> list[str]:
+    """Send through ops.notify (Discord webhook and/or ntfy, whichever .env configures)."""
+    from horizon_trader.ops.notify import send
+
+    return send(title, body, {"high": "urgent", "default": "warn", "low": "info"}[priority])
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     p.add_argument("--notify", action="store_true", help="push problems to ntfy (NTFY_TOPIC)")
     p.add_argument("--failed", metavar="JOB", help="a scheduled job that just failed")
+    p.add_argument("--daily", action="store_true",
+                   help="with --notify: also send a short all-OK message when nothing is wrong, "
+                   "so a silent channel means the alerts themselves are broken")  # fmt: skip
     a = p.parse_args(argv)
     rows = health()
     for r in rows:
         print(f"{r['status']:<5} {r['name']}: {r['detail']}")
     msg = message(rows, a.failed)
+    if a.notify and msg is None and a.daily:
+        msg = (f"horizon-trader: all {len(rows)} checks OK", "", "low")
     if a.notify and msg:
         push(*msg)
         print(f"pushed: {msg[0]}")

@@ -5,4 +5,7 @@
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repo
 & uv run python -m horizon_trader.ops.jobs options_log
-exit $LASTEXITCODE
+$code = $LASTEXITCODE
+# Task Scheduler has no OnFailure hook (systemd does): alert from here.
+if ($code -ne 0) { & uv run python -m horizon_trader.ops.health --notify --failed options_log }
+exit $code

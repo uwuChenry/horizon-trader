@@ -6,6 +6,7 @@ from datetime import date
 import pytest
 
 from horizon_trader.ops import health as H
+from horizon_trader.ops import notify as N
 
 TODAY = date(2026, 11, 5)  # a Thursday
 
@@ -70,31 +71,25 @@ def test_log_suffixes_cover_every_job():
 
 
 def test_push_posts_to_ntfy(monkeypatch):
-    sent = {}
-
-    class Resp:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *a):
-            return False
-
-        def read(self):
-            return b""
-
-    def urlopen(req, timeout):
-        sent.update(url=req.full_url, data=req.data, title=req.get_header("Title"))
-        return Resp()
-
+    sent = []
     monkeypatch.setenv("NTFY_TOPIC", "ht-secret-topic")
-    monkeypatch.delenv("NTFY_URL", raising=False)
-    monkeypatch.setattr(H.urllib.request, "urlopen", urlopen)
-    H.push("horizon-trader: test", "body", "high")
-    assert sent == {"url": "https://ntfy.sh/ht-secret-topic", "data": b"body",
-                    "title": "horizon-trader: test"}  # fmt: skip
+    monkeypatch.setattr(N, "_post", lambda url, data, headers: sent.append((url, data, headers)))
+    assert H.push("horizon-trader: test", "body", "high") == ["ntfy"]
+    url, data, headers = sent[0]
+    assert url == "https://ntfy.sh/ht-secret-topic" and data == b"body"
+    assert headers["Title"] == "horizon-trader: test" and headers["Priority"] == "high"
 
 
-def test_push_without_topic_refuses(monkeypatch):
-    monkeypatch.delenv("NTFY_TOPIC", raising=False)
-    with pytest.raises(SystemExit, match="NTFY_TOPIC"):
+def test_push_without_channel_refuses():
+    with pytest.raises(SystemExit, match="DISCORD_WEBHOOK_URL"):
         H.push("t", "b")
+
+
+def test_daily_sends_all_ok_only_with_flag(monkeypatch):
+    sent = []
+    monkeypatch.setattr(H, "health", lambda: [{"name": "a", "status": "ok", "detail": ""}])
+    monkeypatch.setattr(H, "push", lambda *m: sent.append(m))
+    H.main(["--notify"])
+    assert sent == []
+    H.main(["--notify", "--daily"])
+    assert sent == [("horizon-trader: all 1 checks OK", "", "low")]

@@ -3,4 +3,6 @@
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repo
 & "$repo/.venv/Scripts/python.exe" -m horizon_trader.ops.jobs observe
-exit $LASTEXITCODE
+$code = $LASTEXITCODE
+if ($code -ne 0) { & "$repo/.venv/Scripts/python.exe" -m horizon_trader.ops.health --notify --failed observe }
+exit $code

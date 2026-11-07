@@ -1,4 +1,14 @@
-# Ubuntu ops mini PC
+# Ops mini PC
+
+**The mini runs Windows 11 Pro** (decided 2026-11-06): it uses the same Task Scheduler jobs
+as the main PC (`deploy/windows/install_tasks.ps1`, every `.ps1` calls `ops.jobs`), plus login
+checks and Discord/ntfy alerts (`ops/logins.py`, `ops/notify.py`). **Step-by-step checklist:
+[`MINI_SETUP.md`](MINI_SETUP.md).** The role split, Syncthing, kill-switch and cutover rules
+below apply to either OS; the systemd/IBC-on-Linux sections are the Ubuntu alternative, kept
+working but not in use. On Windows, Task Scheduler has no OnFailure hook, so each job's `.ps1`
+sends the failure alert itself.
+
+## Ubuntu alternative
 
 | Machine | Role | Responsibilities |
 | --- | --- | --- |
