@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader ORB on IBKR paper (one bracket after 09:35; IBKR manages the exit)
+
+[Timer]
+OnCalendar=Mon..Fri 09:21 America/New_York
+Unit=ht-job@orb.service
+# A late start would trade a stale opening range.
+Persistent=false
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

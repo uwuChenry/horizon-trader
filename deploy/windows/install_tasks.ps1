@@ -4,11 +4,13 @@
 #   08:00 Mon-Fri  morning      Massive downloads + momentum orders (+ monthly LLM scores if due)
 #   09:20 Mon-Fri  scanner      IBKR scanner lists at 09:25 / 09:35
 #   09:24 Mon-Fri  observations read-only IBKR paper evidence (install_observer.ps1)
+#   09:21 Mon-Fri  orb          ORB on IBKR paper: one bracket after 09:35 (IBKR manages the exit)
+#   09:21 Mon-Fri  orb_alpaca   ORB on Alpaca paper (same pick), runs until ~16:10
 #   09:25 Mon-Fri  noise        QQQ noise area, runs until ~16:05
 #   14:30 Mon-Fri  canary       login check + one tiny codex exec call before the journal
 #   15:00 Mon-Fri  journal      forecast journal + Alpaca competition follower
 #   15:35 Mon-Fri  options_log  IBKR option-chain snapshot
-#   18:00 Mon-Fri  evening      shadow + Alpaca daily book + competition sync
+#   18:00 Mon-Fri  evening      shadow + Alpaca daily book + competition sync + ORB fills (IBKR)
 #   18:30 Mon-Fri  health       health report; "all OK" message on a clean day
 #   at logon       dashboard    read-only dashboard on HT_DASHBOARD_HOST
 # Tasks run only while this user is logged on (the Gateway needs a desktop anyway): use
@@ -26,6 +28,8 @@ $jobs = @(
     @{Name = "logins"; At = "07:30"; Days = $sunToFri; Hours = 1},
     @{Name = "morning"; At = "08:00"},
     @{Name = "scanner"; At = "09:20"},
+    @{Name = "orb"; At = "09:21"; Hours = 7},
+    @{Name = "orb_alpaca"; At = "09:21"; Hours = 8},
     @{Name = "noise"; At = "09:25"; Hours = 8},
     @{Name = "canary"; Script = "logins"; Args = "-Canary"; At = "14:30"; Hours = 1},
     @{Name = "journal"; At = "15:00"},

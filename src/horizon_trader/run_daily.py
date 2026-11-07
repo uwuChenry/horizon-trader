@@ -198,7 +198,7 @@ def _log_plan(targets: pd.Series, orders: list[Order], last: dict[str, float]) -
 
 
 ALPACA_PREFIXES = ("ALPACA_DAILY_BOOK", "ALPACA_COMPETITION_AI", "ALPACA_MOMENTUM",
-                   "ALPACA_QQQ_NOISE")  # fmt: skip
+                   "ALPACA_QQQ_NOISE", "ALPACA_ORB")  # fmt: skip
 
 
 def kill_everything() -> None:

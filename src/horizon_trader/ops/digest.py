@@ -19,6 +19,8 @@ from pathlib import Path
 DIGEST_JOBS = {
     "morning": "Morning",
     "noise": "QQQ noise",
+    "orb": "ORB (IBKR paper)",
+    "orb_alpaca": "ORB (Alpaca paper)",
     "journal": "Journal",
     "options_log": "Option chains",
     "evening": "Evening",
@@ -26,12 +28,14 @@ DIGEST_JOBS = {
 }
 
 # Lines worth reading on a phone, from run_daily, momentum_book, noise_live, competition,
-# ibkr_options_log and llm.fundamentals (see their log.info/print calls).
+# orb_live, orb_alpaca, ibkr_options_log and llm.fundamentals (see their log.info/print calls).
 KEEP = re.compile(
     r"sent \d+ orders|already (sent|queued)|new fills booked|fills booked|equity \$|targets: "
     r"|split applied|isn't tradable|rounds to 0|kill switch|entry blocked|unfilled|-> target"
     r"|underlyings captured|batches valid|top 20:|market closed|still working|DRY RUN"
     r"|pending orders filled|queued \d+ shadow|Traceback|[A-Za-z]+Error:|[1-9]\d* failed|failed:"
+    r"|candidates|plan: |orders: |entry filled|stopped out|sent MOC|no fill|not flat"
+    r"|not shortable|decision"
 )
 # IBKR's per-contract "no security definition" errors are routine during the option capture.
 DROP = re.compile(r"ib_async|^\+ |^At line:|^\s*\+ ~")

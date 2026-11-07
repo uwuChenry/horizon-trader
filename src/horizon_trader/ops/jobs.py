@@ -45,6 +45,8 @@ JOBS = (
     "morning",
     "scanner",
     "noise",
+    "orb",
+    "orb_alpaca",
     "observe",
     "journal",
     "options_log",
@@ -77,14 +79,21 @@ def _alpaca_enabled() -> bool:
     return os.environ.get("ALPACA_DAILY_BOOK_API_KEY", "").startswith("PK")
 
 
+def _orb_alpaca_enabled() -> bool:
+    return os.environ.get("ALPACA_ORB_API_KEY", "").startswith("PK")
+
+
 def job_steps(job: str, today: date) -> tuple[Step, ...]:
     """Keep each job's ordering, log destinations, and failure policy together."""
     massive = "horizon_trader.datasources.massive"
     scanner = "horizon_trader.intraday.scanner_log"
+    orb_live = "horizon_trader.intraday.orb_live"
     competition = Step("competition", "horizon_trader.agents.competition", ("run",), "competition")
     if job == "morning":
         return (
             Step("massive day", massive, ("download", "--dataset", "day"), "morning"),
+            # splits + common-stock list: momentum, ORB and the LLM universe read them
+            Step("massive ref", "horizon_trader.datasources.massive_ref", (), "morning"),
             Step(
                 "llm monthly",
                 "horizon_trader.ops.jobs",
@@ -105,6 +114,18 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
         return (Step("scanner capture", scanner, ("capture",), "scanner"),)
     if job == "noise":
         return (Step("qqq noise", "horizon_trader.intraday.noise_live", ("run",), "noise"),)
+    if job == "orb":  # IBKR paper; waits for 09:35, places the bracket, IBKR manages the exit
+        return (Step("orb (IBKR paper)", orb_live, ("run",), "orb"),)
+    if job == "orb_alpaca":  # Alpaca paper; same pick, stays up to manage the stop and close
+        return (
+            Step(
+                "orb (Alpaca paper)",
+                "horizon_trader.intraday.orb_alpaca",
+                ("run",),
+                "orb-alpaca",
+                when=_orb_alpaca_enabled,
+            ),
+        )
     if job == "observe":
         window = (
             "--start",
@@ -139,6 +160,7 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
                 when=_alpaca_enabled,
             ),
             competition,
+            Step("orb sync", orb_live, ("sync",), "orb"),  # IBKR returns today's fills only
         )
     if job == "llm_monthly":
         return tuple(

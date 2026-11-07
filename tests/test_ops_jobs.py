@@ -16,6 +16,7 @@ TODAY = date(2026, 11, 5)
 EXPECTED = {
     "morning": [
         ("run", "datasources.massive", ["download", "--dataset", "day"], "morning"),
+        ("run", "datasources.massive_ref", [], "morning"),
         ("background", "ops.jobs", ["llm_monthly"], "morning"),
         ("run", "execution.momentum_book", ["run"], "morning"),
         ("run", "datasources.massive", ["download", "--dataset", "minute"], "morning"),
@@ -26,6 +27,12 @@ EXPECTED = {
     ],
     "noise": [
         ("run", "intraday.noise_live", ["run"], "noise"),
+    ],
+    "orb": [
+        ("run", "intraday.orb_live", ["run"], "orb"),
+    ],
+    "orb_alpaca": [
+        ("run", "intraday.orb_alpaca", ["run"], "orb-alpaca"),
     ],
     "observe": [
         (
@@ -53,6 +60,7 @@ EXPECTED = {
         ("run", "run_daily", ["--mode", "shadow"], "evening"),
         ("run", "run_daily", ["--mode", "alpaca"], "evening"),
         ("run", "agents.competition", ["run"], "competition"),
+        ("run", "intraday.orb_live", ["sync"], "orb"),
     ],
     "llm_monthly": [
         ("run", "llm.fundamentals", ["export"], "llm-fundamentals"),
@@ -107,6 +115,7 @@ class FakeRunner:
 def isolated(monkeypatch, tmp_path):
     monkeypatch.setenv("HT_DATA_DIR", str(tmp_path))
     monkeypatch.delenv("ALPACA_DAILY_BOOK_API_KEY", raising=False)
+    monkeypatch.delenv("ALPACA_ORB_API_KEY", raising=False)
 
     def forbidden(*args, **kwargs):
         pytest.fail("Tests must not start real subprocesses")
@@ -118,6 +127,7 @@ def isolated(monkeypatch, tmp_path):
 @pytest.mark.parametrize("job", EXPECTED)
 def test_job_order_logs_and_subprocess_contract(job, tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("ALPACA_DAILY_BOOK_API_KEY", "PK-test")
+    monkeypatch.setenv("ALPACA_ORB_API_KEY", "PK-test")
     monkeypatch.setenv("OPS_TEST_INHERITED", "present")
     fake = FakeRunner()
     assert jobs.run_job(job, TODAY, fake, background_launcher=fake.background) == 0
@@ -160,7 +170,12 @@ def test_alpaca_condition(key, enabled, monkeypatch):
     fake = FakeRunner()
     assert jobs.run_job("evening", TODAY, fake) == 0
     args = [command[3:] for _, command, _ in fake.calls]
-    assert args == [["--mode", "shadow"], *([["--mode", "alpaca"]] if enabled else []), ["run"]]
+    assert args == [
+        ["--mode", "shadow"],
+        *([["--mode", "alpaca"]] if enabled else []),
+        ["run"],
+        ["sync"],
+    ]
 
 
 @pytest.mark.parametrize("failure", [8, OSError("cannot start journal")])
@@ -270,7 +285,7 @@ def test_dry_prints_every_step_and_log_without_running(job, tmp_path, capsys):
     output = capsys.readouterr().out
     for _, module, args, suffix in EXPECTED[job]:
         assert f"horizon_trader.{module}" in output
-        assert repr(args[-1]) in output
+        assert not args or repr(args[-1]) in output
         assert str(tmp_path / "logs" / f"{TODAY}-{suffix}.log") in output
     assert "trading_day=True" in output
     assert "when=" in output
@@ -304,15 +319,15 @@ def test_force_propagates_to_background_job():
         )
         == 0
     )
-    assert fake.calls[1][0] == "background"
-    assert fake.calls[1][1] == [
+    assert fake.calls[2][0] == "background"
+    assert fake.calls[2][1] == [
         sys.executable,
         "-m",
         "horizon_trader.ops.jobs",
         "llm_monthly",
         "--force",
     ]
-    assert len(fake.calls) == 5
+    assert len(fake.calls) == 6
 
 
 def test_background_launch_exception_is_logged_and_morning_continues(tmp_path):
@@ -322,7 +337,7 @@ def test_background_launch_exception_is_logged_and_morning_continues(tmp_path):
         raise OSError("cannot detach")
 
     assert jobs.run_job("morning", TODAY, fake, background_launcher=broken_launcher) == 1
-    assert len(fake.calls) == 4
+    assert len(fake.calls) == 5
     assert fake.calls[-1][1][-1] == "compare"
     log = (tmp_path / "logs" / f"{TODAY}-morning.log").read_text(encoding="utf-8")
     assert "llm monthly failed: OSError: cannot detach" in log
@@ -345,7 +360,7 @@ def test_background_launcher_detaches_without_waiting(platform, monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", popen)
     fake = FakeRunner()
     assert jobs.run_job("morning", TODAY, fake) == 0
-    assert len(fake.calls) == 4
+    assert len(fake.calls) == 5
     assert len(launches) == 1
     command, kwargs = launches[0]
     assert command == [sys.executable, "-m", "horizon_trader.ops.jobs", "llm_monthly"]

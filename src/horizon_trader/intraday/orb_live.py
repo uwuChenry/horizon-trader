@@ -196,18 +196,56 @@ def _day_log(day: date) -> tuple[dict, Callable[[], None]]:
     return log, save
 
 
+def trades_through_ibkr(folder) -> bool:
+    """Shadow ledgers trade nowhere; Alpaca ledgers (pinned account file, the competition's
+    follow.json, or "alpaca" in the name) hold positions IBKR never sees."""
+    name = folder.name
+    return not (
+        name.endswith("_shadow")
+        or "alpaca" in name
+        or (folder / "alpaca_account.json").exists()
+        or (folder / "follow.json").exists()
+    )
+
+
 def ibkr_ledgers() -> list[Ledger]:
-    """Every strategy ledger that trades through IBKR (shadow ledgers don't)."""
+    """Every strategy ledger that trades through IBKR, for reconcile against its positions."""
     root = data_dir() / "live"
-    names = [
-        p.parent.name for p in root.glob("*/state.json") if not p.parent.name.endswith("_shadow")
-    ]
+    names = [p.parent.name for p in root.glob("*/state.json") if trades_through_ibkr(p.parent)]
     return [Ledger.load(n, 0.0) for n in sorted(set(names) | {STRATEGY})]
 
 
-def run(what_if: bool) -> None:
+def scan_and_plan(ib, day: date, feats: pd.DataFrame, equity: float, log: dict):
+    """At 09:35:05: IBKR scanner -> today's 1-minute bars -> exact relvol ranking -> sized
+    plan. Returns (plan, contract), or (None, None) with log["decision"] saying why. Shared by
+    the IBKR executor (`run`) and the Alpaca one (`orb_alpaca`), so both trade the same pick."""
     from ib_async import Stock
 
+    from horizon_trader.intraday.scanner_log import run_scan
+
+    _wait_until(day, SCAN_AT)
+    ib.RequestTimeout = 30
+    symbols = run_scan(ib, *SCAN)
+    log["scanner"] = {"at": pd.Timestamp.now(tz=NY), "symbols": symbols}
+    contracts = [c for c in ib.qualifyContracts(*[Stock(s, "SMART", "USD") for s in symbols]) if c]
+    bars = fetch_or_bars(ib, contracts)
+    ors = F.opening_range(bars, day, RULES.minutes)
+    cands = pick(feats, ors)
+    log["candidates"] = cands.reset_index().head(10).to_dict("records")
+    print(f"{len(symbols)} scanned, {len(ors)} with bars, {len(cands)} candidates", flush=True)
+    if cands.empty:
+        log["decision"] = "no candidate"
+        return None, None
+    plan = plan_trade(cands.iloc[0], equity)
+    if plan is None:
+        log["decision"] = "size below 1 share"
+        return None, None
+    log["plan"] = asdict(plan) | {"equity": equity}
+    print(f"plan: {plan}", flush=True)
+    return plan, next(c for c in contracts if c.symbol == plan.ticker)
+
+
+def run(what_if: bool) -> None:
     from horizon_trader.execution.ibkr import connect
     from horizon_trader.execution.ibkr_broker import (
         GuardError,
@@ -215,7 +253,6 @@ def run(what_if: bool) -> None:
         paper_account,
         reconcile,
     )
-    from horizon_trader.intraday.scanner_log import run_scan
 
     day = pd.Timestamp.now(tz=NY).date()
     if day.weekday() >= 5:
@@ -235,31 +272,14 @@ def run(what_if: bool) -> None:
         ledger = Ledger.load(STRATEGY, ACCOUNT.equity)
         equity = ledger.cash
 
-        _wait_until(day, SCAN_AT)
-        ib.RequestTimeout = 30
-        symbols = run_scan(ib, *SCAN)
-        log["scanner"] = {"at": pd.Timestamp.now(tz=NY), "symbols": symbols}
-        contracts = [
-            c for c in ib.qualifyContracts(*[Stock(s, "SMART", "USD") for s in symbols]) if c
-        ]
-        bars = fetch_or_bars(ib, contracts)
-        ors = F.opening_range(bars, day, RULES.minutes)
-        cands = pick(feats, ors)
-        log["candidates"] = cands.reset_index().head(10).to_dict("records")
-        print(f"{len(symbols)} scanned, {len(ors)} with bars, {len(cands)} candidates", flush=True)
-        if cands.empty:
-            log["decision"] = "no candidate"
-            return
-        plan = plan_trade(cands.iloc[0], equity)
+        plan, contract = scan_and_plan(ib, day, feats, equity, log)
         if plan is None:
-            log["decision"] = "size below 1 share"
             return
-        log["plan"] = asdict(plan) | {"equity": equity}
-        print(f"plan: {plan}", flush=True)
         notional = plan.qty * plan.level
         if notional > ACCOUNT.leverage * equity * 1.01:
             raise GuardError(f"notional ${notional:,.0f} over {ACCOUNT.leverage}x ${equity:,.0f}")
-        contract = next(c for c in contracts if c.symbol == plan.ticker)
+        if kill_switch_path().exists():
+            raise GuardError(f"kill switch is on ({kill_switch_path()})")
 
         if what_if:
             entry = bracket(plan, account, (0, 0, 0), day)[0]

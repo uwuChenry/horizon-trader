@@ -41,6 +41,7 @@ class OrderSpec:
     qty: float
     limit: float | None  # None = market order (single leg only)
     tif: str = "day"  # "day", or "cls" = market-on-close (Alpaca: submit by 15:50 ET)
+    stop: float | None = None
 
 
 @dataclass
@@ -89,11 +90,19 @@ def _info(o) -> OrderInfo:
 def order_request(spec: OrderSpec):
     """The alpaca-py request for `spec` (separate so tests can check it offline)."""
     from alpaca.trading.enums import OrderClass, OrderSide, PositionIntent, TimeInForce
-    from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, OptionLegRequest
+    from alpaca.trading.requests import (
+        LimitOrderRequest,
+        MarketOrderRequest,
+        OptionLegRequest,
+        StopLimitOrderRequest,
+        StopOrderRequest,
+    )
 
     common = {"qty": spec.qty, "time_in_force": TimeInForce(spec.tif),
               "client_order_id": spec.client_id}  # fmt: skip
     if len(spec.legs) > 1:
+        if spec.stop is not None:
+            raise ValueError("multi-leg orders cannot have a stop")
         if spec.limit is None:
             raise ValueError("multi-leg orders are limit orders here")
         legs = [
@@ -108,6 +117,10 @@ def order_request(spec: OrderSpec):
     kw = {"symbol": leg.symbol, "side": OrderSide(leg.side), **common}
     if leg.intent:
         kw["position_intent"] = PositionIntent(leg.intent)
+    if spec.stop is not None:
+        if spec.limit is not None:
+            return StopLimitOrderRequest(stop_price=spec.stop, limit_price=spec.limit, **kw)
+        return StopOrderRequest(stop_price=spec.stop, **kw)
     if spec.limit is None:
         return MarketOrderRequest(**kw)
     return LimitOrderRequest(limit_price=spec.limit, **kw)
@@ -218,6 +231,18 @@ class AlpacaPaper:
 
     def submit(self, spec: OrderSpec) -> OrderInfo:
         return _info(self.trading.submit_order(order_request(spec)))
+
+    def cancel(self, client_id: str) -> None:
+        from alpaca.common.exceptions import APIError
+
+        try:
+            order = self.trading.get_order_by_client_id(client_id)
+        except APIError as e:
+            if getattr(e, "status_code", None) == 404 or "not found" in str(e).lower():
+                return
+            raise
+        if getattr(order.status, "value", str(order.status)) not in FINAL:
+            self.trading.cancel_order_by_id(order.id)
 
     def cancel_all(self) -> None:
         self.trading.cancel_orders()
