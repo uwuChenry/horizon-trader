@@ -17,10 +17,15 @@ machines hold the state. The first trading job on the mini is then Monday 08:00.
 - [ ] Power: screen off is fine, **sleep = never**, hibernate off (`powercfg /h off`, admin).
 - [ ] BIOS/UEFI: power on after AC power loss.
 - [ ] Windows Update: active hours 07:00-19:00, and `gpedit.msc` > Computer Configuration >
-      Administrative Templates > Windows Components > Windows Update > *No auto-restart with
-      logged on users* = Enabled.
-- [ ] **Auto-logon** for the account that will run everything (Sysinternals Autologon), then
-      lock the screen (Win+L). Tasks run only while this user is logged on.
+      Administrative Templates > Windows Components > Windows Update > **Legacy Policies** >
+      *No auto-restart with logged on users for scheduled automatic updates installations* =
+      Enabled (Windows 11 24H2+ moved it into Legacy Policies). It only applies while
+      *Manage end user experience > Configure Automatic Updates* is Enabled (option 4,
+      auto download and schedule install).
+- [ ] **Auto-logon** for the account that will run everything: `winget install
+      Microsoft.Sysinternals.Autologon`, open a **new** terminal, run `autologon`, enter user / domain (the PC name) /
+      password (the Microsoft-account password, not the PIN), Enable. Then lock the screen
+      (Win+L). Tasks run only while this user is logged on.
 - [ ] Remote Desktop on (Settings > System > Remote Desktop). Disconnect RDP sessions by
       closing the window, never *Sign out*: signing out stops the Gateway and every job.
 - [ ] Tailscale installed and logged in on **both** PCs; note the mini's Tailscale IP.

@@ -1,5 +1,6 @@
 """Scheduled-job behavior without network calls or real subprocesses."""
 
+import json
 import re
 import subprocess
 import sys
@@ -413,3 +414,98 @@ def test_cli_force_and_dry(monkeypatch, tmp_path, capsys):
     assert "run=True (trading_day=False, force=True" in capsys.readouterr().out
     assert jobs.main(["options_log", "--force"]) == 0
     assert len(fake.calls) == 1
+
+
+# --- digests (ops.digest): one info message per finished job -----------------------------
+
+
+class LinesRunner(FakeRunner):
+    """Writes given log lines for each call, like the real child processes."""
+
+    def __init__(self, lines, results=()):
+        super().__init__(results)
+        self.lines = lines
+
+    def __call__(self, command, **kwargs):
+        for line in self.lines:
+            print(line, file=kwargs["stdout"], flush=True)
+        return super().__call__(command, **kwargs)
+
+
+def _notes():
+    sent = []
+    return sent, lambda title, body, level: sent.append((title, body, level))
+
+
+def test_evening_digest_keeps_key_lines_without_log_noise(monkeypatch):
+    monkeypatch.setenv("ALPACA_DAILY_BOOK_API_KEY", "PK-test")
+    sent, notifier = _notes()
+    runner = LinesRunner(
+        [
+            "2026-11-05 18:00:01,000 INFO as of 2026-11-05, mode shadow",
+            "2026-11-05 18:00:02,000 INFO daily_book_shadow: equity $4,839.35, cash $1,691.58",
+            "2026-11-05 18:00:02,500 INFO sent 3 orders for the next open to the broker",
+        ]
+    )
+    assert jobs.run_job("evening", TODAY, runner, notifier=notifier) == 0
+    [(title, body, level)] = sent
+    assert title == f"Evening {TODAY}" and level == "info"
+    assert "[shadow]" in body and "[alpaca]" in body and "[competition]" in body
+    assert "daily_book_shadow: equity $4,839.35, cash $1,691.58" in body
+    assert "sent 3 orders for the next open to the broker" in body
+    assert "as of" not in body and "INFO" not in body and "child output" not in body
+
+
+def test_journal_digest_reads_decision(tmp_path):
+    day = tmp_path / "journal" / "days" / TODAY.isoformat()
+    day.mkdir(parents=True)
+    decision = {
+        "decision": {
+            "regime": "risk_off",
+            "bias": "Defensive",
+            "debate_winner": "bear",
+            "thesis": "x" * 600,
+            "forecasts": [
+                {"ticker": "SPY", "horizon_days": 1, "direction": "up", "confidence": 1},
+                {"ticker": "QQQ", "horizon_days": 5, "direction": "down", "confidence": 3},
+            ],
+        },
+        "resolution": [
+            {
+                "n": 0,
+                "idea": {"structure": "put_debit_spread", "underlying": "QQQ"},
+                "status": "opened",
+                "reason": "ok",
+            }
+        ],
+        "problems": ["missing mandatory forecast SPY 20d"],
+        "closed_by_trader": [],
+    }
+    (day / "decision.json").write_text(json.dumps(decision), encoding="utf-8")
+    sent, notifier = _notes()
+    assert jobs.run_job("journal", TODAY, FakeRunner(), notifier=notifier) == 0
+    [(title, body, _)] = sent
+    assert title == f"Journal {TODAY}"
+    assert body.startswith("risk_off | debate: bear\nDefensive\nSPY: 1d up(1)\nQQQ: 5d down(3)")
+    assert "idea 1: put_debit_spread QQQ -> opened (ok)" in body
+    assert "problem: missing mandatory forecast SPY 20d" in body
+    assert "thesis: " + "x" * 397 + "..." in body
+    assert "[journal]" not in body
+
+
+def test_no_digest_on_failure_for_skipped_jobs_or_without_notifier():
+    sent, notifier = _notes()
+    assert jobs.run_job("evening", TODAY, FakeRunner([3]), notifier=notifier) == 1
+    assert jobs.run_job("scanner", TODAY, FakeRunner(), notifier=notifier) == 0
+    assert jobs.run_job("evening", date(2026, 11, 7), FakeRunner(), notifier=notifier) == 0
+    assert sent == []
+    assert jobs.run_job("evening", TODAY, FakeRunner()) == 0  # no notifier: nothing to call
+
+
+@pytest.mark.parametrize("error", [RuntimeError("discord down"), SystemExit("no channel")])
+def test_digest_failure_never_fails_the_job(error, capsys):
+    def notifier(*args):
+        raise error
+
+    assert jobs.run_job("options_log", TODAY, FakeRunner(), notifier=notifier) == 0
+    assert "digest not sent" in capsys.readouterr().out

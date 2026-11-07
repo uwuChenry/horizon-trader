@@ -173,12 +173,15 @@ def run_job(
     *,
     force: bool = False,
     background_launcher: Callable[..., object] | None = None,
+    notifier: Callable[..., object] | None = None,
 ) -> int:
     """Run a job; injected runners accept subprocess kwargs and return integer exit codes.
 
     The background launcher has the same inputs, but its return value is ignored: a
     successful launch is exit 0, and the detached job records its own eventual failures.
     ``force`` overrides only the calendar, not the monthly or Alpaca conditions.
+    ``notifier`` (``ops.notify.send``-like) gets a digest of a job that exits 0 (ops.digest);
+    only ``main`` passes one, so tests and callers never post by accident.
     """
     today = today if today is not None else datetime.now(NY).date()
     steps = job_steps(job, today)
@@ -206,6 +209,7 @@ def run_job(
     )
     env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8"}
     logs: dict[Path, None] = {}
+    segments: dict[str, str] = {}  # step name -> log text written this run (for the digest)
     exit_code = 0
     for step in steps:
         command = [sys.executable, "-m", step.module, *step.args]
@@ -228,6 +232,7 @@ def run_job(
 
         log_path.parent.mkdir(parents=True, exist_ok=True)
         logs[log_path] = None
+        offset = log_path.stat().st_size if log_path.exists() else 0
         started = perf_counter()
         with log_path.open("a", encoding="utf-8") as log:
             print(_stamp(step.name), file=log, flush=True)
@@ -262,12 +267,37 @@ def run_job(
                 exit_code = 1
             if result and step.fatal:
                 print(f"=== stopped: {' '.join(step.args)} failed", file=log, flush=True)
+                segments[step.name] = _read_from(log_path, offset)
                 break
+        segments[step.name] = _read_from(log_path, offset)
 
     for log_path in logs:
         with log_path.open("a", encoding="utf-8") as log:
             print(_stamp("done"), file=log)
+    if notifier is not None and exit_code == 0 and segments:
+        _send_digest(job, today, root, segments, notifier)
     return exit_code
+
+
+def _read_from(path: Path, offset: int) -> str:
+    try:
+        with path.open("rb") as f:
+            f.seek(offset)
+            return f.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _send_digest(job: str, today: date, root: Path, segments: dict, notifier: Callable) -> None:
+    """Best effort: a digest problem is printed, never turned into a job failure."""
+    from horizon_trader.ops import digest
+
+    try:
+        built = digest.build(job, today, root, segments)
+        if built:
+            notifier(built[0], built[1], "info")
+    except BaseException as exc:  # noqa: BLE001 - includes SystemExit (no channel configured)
+        print(f"digest not sent: {type(exc).__name__}: {exc}", flush=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -278,7 +308,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--force", action="store_true", help="run even on a non-trading day")
     args = parser.parse_args(argv)
-    return run_job(args.job, dry=args.dry, force=args.force)
+    from horizon_trader.ops.notify import send
+
+    return run_job(args.job, dry=args.dry, force=args.force, notifier=send)
 
 
 if __name__ == "__main__":

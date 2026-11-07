@@ -51,7 +51,8 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances 
     -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 $action = New-ScheduledTaskAction -Execute "powershell.exe" `
     -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$dir\dashboard.ps1`""
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+# DOMAIN\user: a bare user name fails ("parameter is incorrect") when the PC has the same name.
+$trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
 Register-ScheduledTask -TaskName "horizon-trader dashboard" -Action $action `
     -Trigger $trigger -Settings $settings -Force | Out-Null
 "registered horizon-trader dashboard (at logon)"
