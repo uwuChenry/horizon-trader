@@ -327,6 +327,10 @@ export const useTimeline = (id: string, enabled = true) =>
 export const useLive = () =>
   useQuery({ queryKey: ["live"], queryFn: () => get<LivePayload>("/api/live"), refetchInterval: 60_000 });
 
+export type HealthCheck = { health: Health[]; checked_at: string };
+/** Runs every check now, with a live read-only IB Gateway connection (takes a few seconds). */
+export const runHealthCheck = () => get<HealthCheck>("/api/live/check");
+
 export const useOrbMeta = () => useQuery({ queryKey: ["orbmeta"], queryFn: () => get<OrbMeta>("/api/orb/meta") });
 export const useOrbDays = (width: string | undefined, topN: number) =>
   useQuery({

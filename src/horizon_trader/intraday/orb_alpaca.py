@@ -8,8 +8,12 @@ The virtual $5k ledger is data/live/orb_alpaca_paper/, never Alpaca's account eq
 Alpaca cannot short hard-to-borrow names. There is no GTD: this runner cancels the entry
 itself at 15:44. The stop is a separate order sent just after entry fills are observed,
 leaving a roughly 2-second unprotected window. Keep the runner awake through the close.
-On half days the entry cutoff moves to 16 minutes before the session close. Exits use
-market-on-close when more than 10 minutes remain, otherwise a day market order.
+On half days the entry cutoff moves to 16 minutes before the session close. The stop stays
+on until 5 minutes before the close; then a day market order closes the position, resent
+(up to 3 times) if it is rejected or expires. Market-on-close was dropped: Alpaca paper let
+an accepted MOC expire unfilled on 2026-11-10 and the position stayed overnight.
+A ledger that starts the day holding anything (a failed exit) is closed first: market on
+open before 09:28, else a day market order; the day stops if that doesn't fill.
 Paper fills are simulated: this measures mechanics, not real slippage. Actual commission
 is $0; the configured IBKR model (Tiered by default) is recorded alongside for comparison.
 Client ids, saved order intents and final fills allow a restart without sending twice.
@@ -44,8 +48,10 @@ STARTING_CASH = 5_000.0
 IB_CLIENT_ID = 22
 LIMITS = LiveSettings(strategy="orb_alpaca", max_order_value=25_000.0, max_orders_per_day=10)
 POLL = 2
-MOC_BY = "15:45:00"
-MOC_CUTOFF = 10
+MOC_BY = "15:45:00"  # reference for the half-day cutoff spacing only
+EXIT_BEFORE_CLOSE = pd.Timedelta(minutes=5)
+MAX_EXITS = 3
+OPG_LEAD = pd.Timedelta(minutes=2)  # Alpaca takes market-on-open orders until 09:28
 NY = "America/New_York"
 
 
@@ -135,23 +141,15 @@ class Runner:
         self.save()
 
     def recover(self):
-        ids = list(
-            dict.fromkeys(
-                [
-                    self.cid("entry"),
-                    *self.day_log.get("client_ids", []),
-                    self.cid("moc"),
-                    self.cid("latex"),
-                ]
-            )
-        )
+        ids = list(dict.fromkeys([self.cid("entry"), *self.day_log.get("client_ids", [])]))
         # Also find an order accepted immediately before a crash, without a saved response.
-        n = 1
-        while (info := self.api.order(self.cid(f"stop{n}"))) is not None:
-            self.orders[info.client_id] = info
-            if info.client_id not in ids:
-                ids.append(info.client_id)
-            n += 1
+        for tag in ("stop", "exit"):
+            n = 1
+            while (info := self.api.order(self.cid(f"{tag}{n}"))) is not None:
+                self.orders[info.client_id] = info
+                if info.client_id not in ids:
+                    ids.append(info.client_id)
+                n += 1
         for cid in ids:
             if (info := self.api.order(cid)) is not None:
                 self.orders[cid] = info
@@ -253,6 +251,9 @@ class Runner:
     def stops(self):
         return {cid: info for cid, info in self.orders.items() if cid.startswith(self.cid("stop"))}
 
+    def exits(self):
+        return {cid: info for cid, info in self.orders.items() if cid.startswith(self.cid("exit"))}
+
     def remaining(self):
         entry = self.orders.get(self.cid("entry"))
         exited = sum(
@@ -281,9 +282,9 @@ class Runner:
             self.send(f"stop{n}", qty, stop=self.plan.stop_px)
 
     def monitor(self):
-        # Once the close has been sent, a restart must leave it alone.
-        closing = [self.cid("moc"), self.cid("latex")]
-        if not any(cid in self.orders for cid in closing):
+        exit_at = self.close_ts - EXIT_BEFORE_CLOSE
+        # Once the close has been sent, a restart must leave the entry and stops alone.
+        if not self.exits():
             while self.clock.now() < self.cutoff:
                 self.refresh()
                 entry = self.orders[self.cid("entry")]
@@ -302,18 +303,18 @@ class Runner:
 
             self.cancel(self.cid("entry"))
             self.refresh()
+            if not self.remaining() and not self.orders[self.cid("entry")].filled_qty:
+                log.info("no fill by 15:44; entry cancelled")
+                self.decision("no fill by 15:44; entry cancelled")
+            # Hold with the stop working until shortly before the close.
+            while self.remaining() and self.clock.now() < exit_at:
+                self.protect()
+                self.clock.sleep(max(0, min(POLL, (exit_at - self.clock.now()).total_seconds())))
+                self.refresh()
             for cid in self.stops():
                 self.cancel(cid)
             self.refresh()
-            qty = self.remaining()
-            if qty:
-                moc = self.clock.now() < self.close_ts - pd.Timedelta(minutes=MOC_CUTOFF)
-                self.send("moc" if moc else "latex", qty, tif="cls" if moc else "day")
-                if moc:
-                    log.info("sent MOC for %g", qty)
-            elif not self.orders[self.cid("entry")].filled_qty:
-                log.info("no fill by 15:44; entry cancelled")
-                self.decision("no fill by 15:44; entry cancelled")
+        self.close_out()
 
         # Poll through the close, then allow up to ten more minutes for final settlement.
         after_close = self.close_ts + pd.Timedelta(minutes=2)
@@ -330,8 +331,78 @@ class Runner:
         if self.ledger.holdings or self.remaining():
             log.error("not flat after the close")
             self.decision("not flat after the close")
+            orb_live.alert(
+                f"ORB (Alpaca paper) not flat: {self.ledger.holdings}",
+                "The next run closes it at the open.",
+            )
         else:
             self.equity()
+
+    def close_out(self):
+        """Day market orders until flat: resend if one ends (rejected/expired/canceled) with
+        shares left, at most MAX_EXITS, and only while the session is open."""
+        while True:
+            self.refresh()
+            qty = self.remaining()
+            working = [info for info in self.exits().values() if not info.final]
+            if not qty and not working:
+                return
+            if working:
+                if self.clock.now() >= self.close_ts + pd.Timedelta(minutes=2):
+                    return
+                self.clock.sleep(POLL)
+                continue
+            n = len(self.exits()) + 1
+            if n > MAX_EXITS or self.clock.now() >= self.close_ts:
+                return
+            try:
+                self.send(f"exit{n}", qty, tif="day")
+            except GuardError as exc:  # rejected: count it and try again
+                log.error("%s", exc)
+                self.clock.sleep(POLL)
+                continue
+            log.info("sent market exit %d for %g", n, qty)
+
+    def close_leftovers(self, open_ts):
+        """Positions a failed exit left overnight: market on open before 09:28, else a day
+        market order; one day-market retry for anything left. Books each final fill."""
+        for symbol in list(self.ledger.holdings):
+            for tag in ("left", "left2"):
+                rest = self.ledger.holdings.get(symbol, 0.0)
+                if not rest:
+                    break
+                cid = self.cid(f"{tag}-{symbol}")
+                info = self.api.order(cid)
+                if info is None:
+                    opg = tag == "left" and self.clock.now() < open_ts - OPG_LEAD
+                    side = "sell" if rest > 0 else "buy"
+                    spec = OrderSpec(cid, (Leg(symbol, side),), abs(rest), None,
+                                     "opg" if opg else "day")  # fmt: skip
+                    info = self.api.submit(spec)
+                    self.write("order", cid=cid, spec=asdict(spec), status=info.status)
+                    log.info("leftover %s %g: sent %s %g (%s)", symbol, rest, side, abs(rest),
+                             spec.tif)  # fmt: skip
+                deadline = max(open_ts, self.clock.now()) + pd.Timedelta(minutes=5)
+                while not info.final and self.clock.now() < deadline:
+                    self.clock.sleep(POLL)
+                    info = self.api.order(cid)
+                if info.filled_qty and cid not in self.ledger.seen_exec_ids:
+                    qty = -math.copysign(info.filled_qty, rest)
+                    self.ledger.apply_fill(
+                        time=info.filled_at or self.clock.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        source="alpaca", symbol=symbol, quantity=qty,
+                        price=float(info.avg_price), commission=0.0,
+                        modeled_commission=self.costs.total(qty, float(info.avg_price)),
+                        exec_id=cid,
+                    )  # fmt: skip
+                    self.ledger.save()
+                    self.write("fill", cid=cid, qty=qty, price=info.avg_price)
+                    log.info("leftover %s closed %g @ %g", symbol, qty, info.avg_price)
+                if not info.final:
+                    self.api.cancel(cid)
+        if self.ledger.holdings:
+            orb_live.alert(f"ORB (Alpaca paper) leftover not closed: {self.ledger.holdings}")
+            raise GuardError(f"leftover positions not closed: {self.ledger.holdings}")
 
     def equity(self):
         self.ledger.save()
@@ -359,7 +430,8 @@ def run(api=None, clock=None, root=None, plan_fn=None) -> None:
     runner.recover()
     runner.reconcile()
     if not runner.orders and ledger.holdings:
-        raise GuardError("ORB must be flat at the start of a new day")
+        runner.close_leftovers(pd.Timestamp(f"{today} {session[0]}", tz=NY))
+        runner.reconcile()
     if runner.orders and runner.cid("entry") not in runner.orders:
         raise GuardError("ORB orders exist without today's entry")
     if runner.cid("entry") in runner.orders:

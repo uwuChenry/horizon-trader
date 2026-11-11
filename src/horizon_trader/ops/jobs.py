@@ -64,6 +64,7 @@ class Step:
     when: Callable[[], bool] | None = None
     background: bool = False
     fatal: bool = False
+    timeout: float | None = None  # seconds; the step is killed and counts as failed
 
 
 def is_trading_day(today: date) -> bool:
@@ -88,7 +89,9 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
     massive = "horizon_trader.datasources.massive"
     scanner = "horizon_trader.intraday.scanner_log"
     orb_live = "horizon_trader.intraday.orb_live"
-    competition = Step("competition", "horizon_trader.agents.competition", ("run",), "competition")
+    competition = Step(
+        "competition", "horizon_trader.agents.competition", ("run",), "competition", timeout=900
+    )
     if job == "morning":
         return (
             Step("massive day", massive, ("download", "--dataset", "day"), "morning"),
@@ -114,7 +117,7 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
         return (Step("scanner capture", scanner, ("capture",), "scanner"),)
     if job == "noise":
         return (Step("qqq noise", "horizon_trader.intraday.noise_live", ("run",), "noise"),)
-    if job == "orb":  # IBKR paper; waits for 09:35, places the bracket, IBKR manages the exit
+    if job == "orb":  # IBKR paper; waits for 09:35, places the bracket, stays up for the exit
         return (Step("orb (IBKR paper)", orb_live, ("run",), "orb"),)
     if job == "orb_alpaca":  # Alpaca paper; same pick, stays up to manage the stop and close
         return (
@@ -139,7 +142,10 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
             Step("observe", "horizon_trader.execution.observe", ("--session",), "observe"),
         )
     if job == "journal":
-        return (Step("journal", "horizon_trader.agents.journal", ("run",), "journal"), competition)
+        journal = Step(
+            "journal", "horizon_trader.agents.journal", ("run",), "journal", timeout=3600
+        )
+        return (journal, competition)
     if job == "options_log":
         return (
             Step(
@@ -147,6 +153,7 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
                 "horizon_trader.datasources.ibkr_options_log",
                 ("capture",),
                 "options",
+                timeout=3600,  # normally ~10 min; a stuck Gateway once held it for 8 hours
             ),
         )
     if job == "evening":
@@ -160,7 +167,8 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
                 when=_alpaca_enabled,
             ),
             competition,
-            Step("orb sync", orb_live, ("sync",), "orb"),  # IBKR returns today's fills only
+            # IBKR returns today's fills only; a stuck Gateway once held this for 5.7 hours
+            Step("orb sync", orb_live, ("sync",), "orb", timeout=900),
         )
     if job == "llm_monthly":
         return tuple(
@@ -260,6 +268,8 @@ def run_job(
             print(_stamp(step.name), file=log, flush=True)
             try:
                 kwargs = {"cwd": REPO_ROOT, "stdout": log, "stderr": subprocess.STDOUT, "env": env}
+                if step.timeout and not step.background:
+                    kwargs["timeout"] = step.timeout
                 if step.background:
                     background_launcher(command, **kwargs)
                     result = 0

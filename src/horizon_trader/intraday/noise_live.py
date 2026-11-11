@@ -12,7 +12,12 @@ The rule is `intraday/market_momentum.py` at the paper's defaults (Zarattini, Az
   position  long above max(upper, VWAP), short below min(lower, VWAP), else flat
   size      2% daily vol target on the previous 14 sessions' close-to-close vol, at most 4x,
             whole shares from the start-of-day equity, the same size all day
-  exit      whatever is open after the last check goes out market-on-close
+  exit      whatever is open after the last check goes out with a day market order at 15:55
+            (5 minutes before the close), resent up to 3 times if it doesn't fill. The paper
+            exits in the closing auction; Alpaca paper let an accepted market-on-close order
+            expire unfilled (2026-11-09: +6 QQQ held overnight), so this runner doesn't use one.
+  leftover  a position the ledger still holds at the start (a failed exit) is closed first:
+            market on open before 09:28, else a day market order
 
 Data: sigma, the previous close and the daily vol come from the Massive minute/day files (the
 08:00 job downloads yesterday's); the run refuses to trade if they don't end on the previous
@@ -23,7 +28,8 @@ stands in for the official opening print.
 
 Orders: Alpaca paper market orders, sent right after each check (the backtest fills at the
 next minute's open). A reversal is two orders, exit then entry (Alpaca won't flip a position
-in one). Client order ids are `qqqnoise-<date>-<HHMM>-x|e` and `-moc`, so a restarted run books
+in one). Client order ids are `qqqnoise-<date>-<HHMM>-x|e`, `-close<n>` and `-left`/`-left2`,
+so a restarted run books
 what already happened and never resends. The kill switch (data/live/KILL) blocks entries; exits
 and the closing order still go out. Ledger: data/live/qqq_noise_alpaca_paper/ (virtual $5k),
 with every check in checks.jsonl. Alpaca paper fills are simulated; the ledger logs the IBKR
@@ -59,7 +65,9 @@ IB_CLIENT_ID = 41
 LIMITS = LiveSettings(strategy="qqq_noise", max_order_value=25_000.0, max_orders_per_day=30)
 NY = "America/New_York"
 FILL_WAIT = 90  # seconds to wait for a market order to finish
-MOC_CUTOFF = 10  # Alpaca takes market-on-close orders until 10 minutes before the close
+EXIT_BEFORE_CLOSE = pd.Timedelta(minutes=5)
+MAX_EXITS = 3
+OPG_LEAD = pd.Timedelta(minutes=2)  # Alpaca takes market-on-open orders until 09:28
 
 
 # ---------------------------------------------------------------- plan (pure)
@@ -261,7 +269,7 @@ class Runner:
             info = self.api.order(cid)
         return info
 
-    def send(self, tag: str, qty: float, ref_price: float, tif: str = "day"):
+    def send(self, tag: str, qty: float, ref_price: float, tif: str = "day", until=None):
         """Send (or find, after a restart) one market order and book its fill."""
         from horizon_trader.execution.alpaca_broker import Leg, OrderSpec
 
@@ -271,9 +279,8 @@ class Runner:
             side = "buy" if qty > 0 else "sell"
             info = self.api.submit(OrderSpec(cid, (Leg(TICKER, side),), abs(qty), None, tif))
             self.write("order", cid=cid, qty=qty, tif=tif, status=info.status)
-        if tif == "cls":
-            return info
-        info = self.wait(cid, self.clock.now() + pd.Timedelta(seconds=FILL_WAIT))
+        until = until if until is not None else self.clock.now() + pd.Timedelta(seconds=FILL_WAIT)
+        info = self.wait(cid, until)
         if info is None or not info.final:
             self.write("order_unfinished", cid=cid, status=getattr(info, "status", None))
             log.error("%s not finished after %ss", cid, FILL_WAIT)
@@ -286,12 +293,13 @@ class Runner:
 
     def recover(self) -> None:
         """Book anything today's earlier run already sent (restart after a crash)."""
-        for j in self.plan.checks:
-            for leg in ("x", "e"):
-                cid = self.cid(f"{hhmm(j)}-{leg}")
-                info = self.api.order(cid)
-                if info is not None and info.final:
-                    self.book(cid, info, math.nan)
+        tags = [f"{hhmm(j)}-{leg}" for j in self.plan.checks for leg in ("x", "e")]
+        tags += ["left", "left2", *(f"close{n}" for n in range(1, MAX_EXITS + 1))]
+        for tag in tags:
+            cid = self.cid(tag)
+            info = self.api.order(cid)
+            if info is not None and info.final:
+                self.book(cid, info, math.nan)
 
     # -- the day -------------------------------------------------------------------------
     def entries_allowed(self, qty: float, price: float) -> bool:
@@ -335,26 +343,47 @@ class Runner:
             self.send(f"{hhmm(j)}-e", target * self.qty, price)
         return sig
 
-    def close_out(self) -> None:
+    def close_leftovers(self) -> None:
+        """A position left from an earlier day: market on open before 09:28, else a day market
+        order, then one day-market retry. Anything still open is handled by the checks."""
         if not self.position:
             return
-        now = self.clock.now()
-        if now < self.close_ts - pd.Timedelta(minutes=MOC_CUTOFF):
-            self.send("moc", -self.position, math.nan, tif="cls")
-        else:  # too late for a closing order: flatten now
-            self.send("late-x", -self.position, math.nan)
+        log.warning("leftover %+g %s from an earlier session: closing it", self.position, TICKER)
+        self.write("leftover", position=self.position)
+        opg = self.clock.now() < self.open_ts - OPG_LEAD
+        until = max(self.open_ts, self.clock.now()) + pd.Timedelta(minutes=5)
+        self.send("left", -self.position, math.nan, tif="opg" if opg else "day", until=until)
+        if self.position and self.clock.now() >= self.open_ts:
+            self.send("left2", -self.position, math.nan)
+        if self.position:
+            self.alert(f"QQQ noise (Alpaca paper): leftover {self.position:+g} {TICKER} not closed")
+
+    def close_out(self) -> None:
+        """Day market orders from 5 minutes before the close until flat (at most MAX_EXITS)."""
+        exit_at = self.close_ts - EXIT_BEFORE_CLOSE
+        wait = (exit_at - self.clock.now()).total_seconds()
+        if self.position and wait > 0:
+            self.clock.sleep(wait)
+        for n in range(1, MAX_EXITS + 1):
+            if not self.position or self.clock.now() >= self.close_ts:
+                return
+            self.send(f"close{n}", -self.position, math.nan)
 
     def finish(self) -> None:
-        cid = self.cid("moc")
-        info = self.wait(cid, self.close_ts + pd.Timedelta(minutes=10))
-        if info is not None and info.final:
-            self.book(cid, info, math.nan, -self.position)
         if self.position:
             self.write("not_flat", position=self.position)
             log.error("still %+g %s after the close: check the account", self.position, TICKER)
+            self.alert(f"QQQ noise (Alpaca paper) not flat: {self.position:+g} {TICKER}",
+                       "The next run closes it at the open.")  # fmt: skip
+
+    def alert(self, title: str, body: str = "") -> None:
+        from horizon_trader.intraday.orb_live import alert
+
+        alert(title, body)
 
     def run(self) -> None:
         self.write("start", plan=asdict(self.plan), position=self.position, equity=self.equity0)
+        self.close_leftovers()
         for j in self.plan.checks:
             at = self.open_ts + pd.Timedelta(minutes=j + 1)
             now = self.clock.now()
@@ -363,7 +392,6 @@ class Runner:
             self.clock.sleep((at - now).total_seconds() + 3)  # let the bar finish
             self.at_check(j)
         self.close_out()
-        self.clock.sleep((self.close_ts - self.clock.now()).total_seconds() + 60)
         self.finish()
 
 

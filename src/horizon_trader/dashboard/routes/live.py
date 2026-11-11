@@ -1,15 +1,19 @@
 """Forward tests and paper accounts: ledgers under data/live, IBKR observations, job health.
 
-Read-only: nothing here talks to a broker or places an order.
+Read-only: nothing here places an order. `/check` opens one read-only IB Gateway connection
+(in a subprocess running `ops.health --json`) to test it live.
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from horizon_trader import config
 from horizon_trader.backtest import analytics as A
@@ -109,6 +113,34 @@ def ledger(folder: Path) -> dict:
             "orders": int(len(fills)),
         }
     return out
+
+
+CHECK_TIMEOUT = 120  # seconds; the Gateway connect alone times out after 10
+
+
+def run_check(run=None) -> list[dict]:
+    """The 18:30 health job's checks, with a live IB Gateway connection, in a fresh process:
+    ib_async needs its own event loop, and a subprocess always runs the code on disk."""
+    run = run or subprocess.run  # looked up at call time (tests patch it)
+    proc = run(
+        [sys.executable, "-m", "horizon_trader.ops.health", "--json"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=CHECK_TIMEOUT, check=False,
+    )  # fmt: skip
+    lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("[")]
+    if proc.returncode or not lines:
+        raise RuntimeError((proc.stderr or proc.stdout or f"exit {proc.returncode}")[-500:])
+    return json.loads(lines[-1])
+
+
+@router.get("/check")
+def check() -> dict:
+    """Run every health check now, including a live (read-only) IB Gateway connection."""
+    try:
+        rows = run_check()
+    except (RuntimeError, subprocess.TimeoutExpired, ValueError) as exc:
+        raise HTTPException(status_code=502, detail=f"health check failed: {exc}") from exc
+    return clean({"health": rows, "checked_at": datetime.now().astimezone().isoformat()})
 
 
 @router.get("")

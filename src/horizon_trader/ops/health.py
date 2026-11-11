@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -37,6 +38,44 @@ LOG_SUFFIXES = {
     "llm_monthly": ["llm-fundamentals"],
 }
 DISK_WARN, DISK_BAD = 0.15, 0.05  # free share of the data disk
+# Intraday ledgers: any holding outside the session is a failed exit.
+FLAT_OVERNIGHT = ("orb", "orb_alpaca_paper", "qqq_noise_alpaca_paper")
+STEP_EXIT = re.compile(r"^(?P<step>.+): exit (?P<code>-?\d+) \(")
+
+
+def flat_ledgers(data) -> list[dict]:
+    """Intraday ledgers must hold nothing outside the session (ORB exits at the close)."""
+    out = []
+    for name in FLAT_OVERNIGHT:
+        path = data / "live" / name / "state.json"
+        if not path.exists():
+            continue
+        try:
+            holdings = {s: q for s, q in json.loads(path.read_text("utf-8"))["holdings"].items()
+                        if q}  # fmt: skip
+        except (OSError, ValueError, KeyError) as exc:
+            holdings, detail = None, f"unreadable state.json ({exc!r})"
+        if holdings is None:
+            out.append({"name": f"{name} flat", "status": "warn", "detail": detail, "last": None})
+        elif holdings:
+            detail = f"holding {holdings} (exit failed; next run closes at the open)"
+            out.append({"name": f"{name} flat", "status": "bad", "detail": detail, "last": None})
+        else:
+            out.append({"name": f"{name} flat", "status": "ok", "detail": "flat", "last": None})
+    return out
+
+
+def failed_steps(data, today: date) -> dict:
+    """Every job step that exited non-zero in today's logs (ops.jobs writes 'name: exit N (')."""
+    failed = []
+    for path in sorted((data / "logs").glob(f"{today.isoformat()}-*.log")):
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            m = STEP_EXIT.match(line.strip())
+            if m and m["code"] != "0":
+                failed.append(f"{m['step']} (exit {m['code']})")
+    detail = ", ".join(failed) if failed else "no failed steps today"
+    return {"name": "Job steps today", "status": "warn" if failed else "ok", "detail": detail,
+            "last": today.isoformat()}  # fmt: skip
 
 
 def business_days_between(a: date, b: date) -> int:
@@ -101,7 +140,10 @@ def today_ny() -> date:
     return datetime.now(NY).date()
 
 
-def health(today: date | None = None) -> list[dict]:
+def health(today: date | None = None, gateway=None) -> list[dict]:
+    """`gateway`: a callable returning a live IB Gateway row (ops.logins.ib_gateway); the CLI
+    passes it, the dashboard doesn't (it would connect on every page load) and shows the
+    observer's last connection instead."""
     today = today or today_ny()
     data = config.data_dir()
     out = []
@@ -129,8 +171,12 @@ def health(today: date | None = None) -> list[dict]:
     )
     chains = [d for d in (data / "ibkr" / "options").glob("????-??-??") if any(d.glob("*.parquet"))]
     out.append(check("IBKR option-chain log", _latest_stem(chains), today, 1, "chain snapshot"))
+    out.extend(flat_ledgers(data))
+    out.append(failed_steps(data, today))
     obs = observations(5)["last_connection"]
-    if obs is None:
+    if gateway is not None:
+        out.append({**gateway(), "last": today.isoformat()})
+    elif obs is None:
         out.append(
             {"name": "IB Gateway", "status": "bad", "detail": "No observations", "last": None}
         )
@@ -203,8 +249,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--daily", action="store_true",
                    help="with --notify: also send a short all-OK message when nothing is wrong, "
                    "so a silent channel means the alerts themselves are broken")  # fmt: skip
+    p.add_argument("--json", action="store_true",
+                   help="print the rows as JSON only (the dashboard's live check)")  # fmt: skip
     a = p.parse_args(argv)
-    rows = health()
+    from horizon_trader.ops.logins import ib_gateway
+
+    rows = health(gateway=ib_gateway)
+    if a.json:
+        print(json.dumps(rows, default=str))
+        return 0
     for r in rows:
         print(f"{r['status']:<5} {r['name']}: {r['detail']}")
     msg = message(rows, a.failed)

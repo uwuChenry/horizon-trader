@@ -17,9 +17,14 @@ Known differences from the backtest:
   3. No entries after 15:44 (GTD), so the market-on-close exit can still be sent.
   4. History ends at the last day with Massive files on disk (normally yesterday).
 
-`run` places a bracket: the entry (STP LMT, GTD 15:44) with two children in one OCA group,
-a 1-ATR stop and a market-on-close exit, so IBKR manages the exit even if this PC sleeps.
-If IBKR rejects the MOC child, `run` stays up and sends the MOC itself at 15:45.
+`run` places the entry (STP LMT, GTD 15:44) with an attached 1-ATR stop child, then stays
+up. At 15:45 it cancels the working orders, reads the ACTUAL position from IBKR and sends a
+market-on-close for it; if IBKR rejects the MOC it sends a market order at once. At 16:01 it
+checks the position again and sends an urgent alert if it isn't flat. (IBKR rejected a MOC
+child inside the bracket's OCA group with "Invalid OCA handling method", 2026-11-10.)
+All waits run IBKR's event loop (ib.sleep), so order and fill updates keep arriving.
+If the ledger starts the day holding anything (a failed exit), `run` first sends market
+orders to close it at the open (OPG before 09:28), and skips a pick in the same ticker.
 `sync` books the day's fills into the ledger (IBKR's commission next to the model's) and
 checks the account is flat. IBKR returns only the current day's executions, so run it the
 same evening. PAPER ONLY: the account guard and kill switch from execution.ibkr_broker apply.
@@ -53,7 +58,9 @@ NY = "America/New_York"
 SCAN = ("SCAN_stVolumeVsAvg5min_DESC", "CORP")
 SCAN_AT = "09:35:05"
 ENTRY_CUTOFF = "15:44:00"
-FALLBACK_EXIT = "15:45:00"
+EXIT_AT = "15:45:00"  # NYSE/Nasdaq take MOC orders until 15:50
+FLAT_CHECK = "16:01:00"
+OPG_BY = "09:28:00"  # IBKR takes market-on-open orders until 09:28
 REJECTED = {"Cancelled", "ApiCancelled", "Inactive"}
 
 
@@ -115,13 +122,13 @@ def plan_trade(c: pd.Series, equity: float, acct: orb.Account = ACCOUNT) -> Plan
     return Plan(str(c.name), side, level, stop_px, qty, float(c["atr"]), float(c["relvol"]))
 
 
-def bracket(plan: Plan, account: str, ids: tuple[int, int, int], day: date) -> list:
-    """Entry stop-limit at the trigger (GTD 15:44) + OCA children: 1-ATR stop, market on close."""
+def bracket(plan: Plan, account: str, ids: tuple[int, int], day: date) -> list:
+    """Entry stop-limit at the trigger (GTD 15:44) + an attached 1-ATR stop child. The close
+    is sent by the runner at 15:45 for the position IBKR actually reports (`manage_exit`)."""
     from ib_async import Order
 
     act, close_act = ("BUY", "SELL") if plan.side > 0 else ("SELL", "BUY")
     common = dict(totalQuantity=plan.qty, orderRef=STRATEGY, account=account)
-    oca = dict(parentId=ids[0], ocaGroup=f"orb-{day:%Y%m%d}-{plan.ticker}", ocaType=1)
     return [
         Order(
             orderId=ids[0], action=act, orderType="STP LMT", auxPrice=plan.level,
@@ -129,12 +136,20 @@ def bracket(plan: Plan, account: str, ids: tuple[int, int, int], day: date) -> l
             transmit=False, **common,
         ),
         Order(
-            orderId=ids[1], action=close_act, orderType="STP", auxPrice=plan.stop_px,
-            tif="DAY", transmit=False, **common, **oca,
+            orderId=ids[1], parentId=ids[0], action=close_act, orderType="STP",
+            auxPrice=plan.stop_px, tif="DAY", transmit=True, **common,
         ),
-        Order(orderId=ids[2], action=close_act, orderType="MOC", tif="DAY", transmit=True,
-              **common, **oca),
     ]  # fmt: skip
+
+
+def close_order(position: float, account: str, order_type: str = "MOC", tif: str = "DAY"):
+    """A market-type order that flattens `position` (signed shares), tagged for the ledger."""
+    from ib_async import Order
+
+    return Order(
+        action="SELL" if position > 0 else "BUY", totalQuantity=abs(position),
+        orderType=order_type, tif=tif, orderRef=STRATEGY, account=account, transmit=True,
+    )  # fmt: skip
 
 
 # ---------------------------------------------------------------- IO
@@ -178,11 +193,22 @@ def fetch_or_bars(ib, contracts: list) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["ts", "ticker", "open", "high", "low", "close", "volume"])
 
 
-def _wait_until(day: date, hhmmss: str) -> None:
-    wait = (pd.Timestamp(f"{day} {hhmmss}", tz=NY) - pd.Timestamp.now(tz=NY)).total_seconds()
-    if wait > 0:
-        print(f"waiting {wait / 60:.0f} min for {hhmmss} ET", flush=True)
+def _wait_until(day: date, hhmmss: str, ib=None) -> None:
+    """Sleep until `hhmmss` ET. With `ib`, sleep through ib.sleep so the event loop keeps
+    processing order/fill updates (time.sleep froze them for 6 hours on 2026-11-10, and the
+    runner then believed an entry that had filled was unfilled), and fail fast on a drop."""
+    until = pd.Timestamp(f"{day} {hhmmss}", tz=NY)
+    wait = (until - pd.Timestamp.now(tz=NY)).total_seconds()
+    if wait <= 0:
+        return
+    print(f"waiting {wait / 60:.0f} min for {hhmmss} ET", flush=True)
+    if ib is None:
         time.sleep(wait)
+        return
+    while (left := (until - pd.Timestamp.now(tz=NY)).total_seconds()) > 0:
+        if not ib.isConnected():
+            raise ConnectionError(f"IBKR disconnected while waiting for {hhmmss} ET")
+        ib.sleep(min(30.0, left))
 
 
 def _day_log(day: date) -> tuple[dict, Callable[[], None]]:
@@ -223,7 +249,7 @@ def scan_and_plan(ib, day: date, feats: pd.DataFrame, equity: float, log: dict):
 
     from horizon_trader.intraday.scanner_log import run_scan
 
-    _wait_until(day, SCAN_AT)
+    _wait_until(day, SCAN_AT, ib)
     ib.RequestTimeout = 30
     symbols = run_scan(ib, *SCAN)
     log["scanner"] = {"at": pd.Timestamp.now(tz=NY), "symbols": symbols}
@@ -268,12 +294,21 @@ def run(what_if: bool) -> None:
         account = paper_account(ib)
         if kill_switch_path().exists():
             raise GuardError(f"kill switch is on ({kill_switch_path()})")
-        reconcile(ib, account, ibkr_ledgers())  # ORB is flat overnight
+        reconcile(ib, account, ibkr_ledgers())  # ledger and account agree (incl. leftovers)
         ledger = Ledger.load(STRATEGY, ACCOUNT.equity)
-        equity = ledger.cash
+        leftovers = {s: q for s, q in ledger.holdings.items() if q}
+        equity = ledger.cash + leftover_value(leftovers, feats)
+        if leftovers and not what_if:
+            close_leftovers(ib, account, leftovers, log)
+            save()
 
         plan, contract = scan_and_plan(ib, day, feats, equity, log)
         if plan is None:
+            return
+        if plan.ticker in leftovers:
+            log["skipped_plan"] = log.pop("plan", None)  # orb_alpaca follows log["plan"]
+            log["decision"] = f"pick {plan.ticker} is a leftover being closed; no trade"
+            print(log["decision"], flush=True)
             return
         notional = plan.qty * plan.level
         if notional > ACCOUNT.leverage * equity * 1.01:
@@ -282,7 +317,7 @@ def run(what_if: bool) -> None:
             raise GuardError(f"kill switch is on ({kill_switch_path()})")
 
         if what_if:
-            entry = bracket(plan, account, (0, 0, 0), day)[0]
+            entry = bracket(plan, account, (0, 0), day)[0]
             entry.transmit = True
             state = ib.whatIfOrder(contract, entry)
             log["what_if"] = {"commission": getattr(state, "commission", None),
@@ -292,44 +327,119 @@ def run(what_if: bool) -> None:
             print("what-if:", log["what_if"])
             return
 
-        ids = (ib.client.getReqId(), ib.client.getReqId(), ib.client.getReqId())
+        ids = (ib.client.getReqId(), ib.client.getReqId())
         trades = [ib.placeOrder(contract, o) for o in bracket(plan, account, ids, day)]
         ib.sleep(3)
         status = {t.order.orderType: t.orderStatus.status for t in trades}
         log["orders"] = {"ids": ids, "status": status}
         print("orders:", status, flush=True)
-        if status["STP LMT"] in REJECTED:
-            raise GuardError(
-                f"entry rejected: {trades[0].log[-1].message if trades[0].log else ''}"
-            )
-        if status["MOC"] in REJECTED:
-            log["decision"] = "placed; MOC child rejected, exiting at 15:45 from here"
-            save()
-            _fallback_exit(ib, contract, trades, day)
-        else:
-            log["decision"] = "placed"
+        if status["STP LMT"] in REJECTED or status["STP"] in REJECTED:
+            for t in trades:
+                if not t.isDone():
+                    ib.cancelOrder(t.order)
+            msgs = "; ".join(t.log[-1].message for t in trades if t.log and t.log[-1].message)
+            raise GuardError(f"bracket rejected: {status} {msgs}")
+        log["decision"] = "placed; runner manages the 15:45 exit"
+        save()
+        manage_exit(ib, account, contract, trades, day, log, save)
     finally:
         save()
         ib.disconnect()
 
 
-def _fallback_exit(ib, contract, trades: list, day: date) -> None:
-    """Stay up until 15:45; if the entry filled, cancel the stop and send a MOC ourselves."""
-    from ib_async import MarketOrder
+def ibkr_position(ib, account: str, contract) -> float:
+    """Signed shares IBKR reports right now for this contract (fresh request, not a cache)."""
+    return sum(
+        p.position
+        for p in ib.reqPositions()
+        if p.account == account and p.contract.conId == contract.conId
+    )
 
-    _wait_until(day, FALLBACK_EXIT)
-    entry, stop = trades[0], trades[1]
-    held = entry.orderStatus.filled - (stop.orderStatus.filled if stop else 0)
-    if held <= 0:
-        ib.cancelOrder(entry.order)
-        print("no position at 15:45")
+
+def manage_exit(ib, account: str, contract, trades: list, day: date, log: dict, save) -> None:
+    """15:45: cancel the entry and stop, read the real position, MOC it (market order if the
+    MOC is rejected). 16:01: confirm flat, else alert. The position, not order bookkeeping,
+    decides: a stop or entry can fill while the cancels are in flight."""
+    _wait_until(day, EXIT_AT, ib)
+    for t in trades:
+        if not t.isDone():
+            ib.cancelOrder(t.order)
+    deadline = time.monotonic() + 30
+    while not all(t.isDone() for t in trades) and time.monotonic() < deadline:
+        ib.sleep(1)
+    held = ibkr_position(ib, account, contract)
+    log["exit"] = {"position_at_exit": held}
+    if not held:
+        log["decision"] = "flat at 15:45 (no fill or stopped out)"
+        print(log["decision"], flush=True)
+        save()
         return
-    ib.cancelOrder(stop.order)
-    moc = MarketOrder(stop.order.action, held, orderType="MOC", tif="DAY",
-                      orderRef=STRATEGY, account=entry.order.account)  # fmt: skip
-    ib.placeOrder(contract, moc)
-    ib.sleep(3)
-    print(f"sent MOC for {held:g} {contract.symbol}")
+    exit_trade = ib.placeOrder(contract, close_order(held, account, "MOC"))
+    ib.sleep(5)
+    log["exit"]["moc"] = exit_trade.orderStatus.status
+    print(f"sent MOC for {held:g} {contract.symbol}: {exit_trade.orderStatus.status}", flush=True)
+    if exit_trade.orderStatus.status in REJECTED:
+        msg = exit_trade.log[-1].message if exit_trade.log else ""
+        print(f"MOC rejected ({msg}); sending a market order now", flush=True)
+        mkt = ib.placeOrder(contract, close_order(held, account, "MKT"))
+        ib.sleep(5)
+        log["exit"]["market"] = mkt.orderStatus.status
+    save()
+    _wait_until(day, FLAT_CHECK, ib)
+    left = ibkr_position(ib, account, contract)
+    log["exit"]["position_after_close"] = left
+    if left:
+        log["decision"] = f"NOT FLAT after the close: {left:g} {contract.symbol}"
+        alert(f"ORB (IBKR paper) not flat: {left:g} {contract.symbol}",
+              "The runner closes it at the next open. Check IB Gateway.")  # fmt: skip
+    else:
+        log["decision"] = "closed at the close"
+    print(log["decision"], flush=True)
+    save()
+
+
+def leftover_value(leftovers: dict[str, float], feats: pd.DataFrame) -> float:
+    """Leftover shares at the previous close, so sizing sees the whole ledger equity."""
+    total = 0.0
+    for symbol, qty in leftovers.items():
+        px = feats["prev_close"].get(symbol) if "prev_close" in feats else None
+        total += qty * float(px) if px is not None and not pd.isna(px) else 0.0
+    return total
+
+
+def close_leftovers(ib, account: str, leftovers: dict[str, float], log: dict) -> None:
+    """Market-on-open (or a day market order after 09:28) for positions a failed exit left
+    overnight. The evening `sync` books the fills like any other ORB execution."""
+    from ib_async import Stock
+
+    from horizon_trader.execution.ibkr_broker import GuardError
+
+    now = pd.Timestamp.now(tz=NY)
+    opg = now < pd.Timestamp(f"{now.date()} {OPG_BY}", tz=NY)
+    sent = {}
+    for symbol, qty in leftovers.items():
+        (contract,) = ib.qualifyContracts(Stock(symbol, "SMART", "USD"))
+        order = close_order(qty, account, "MKT", "OPG" if opg else "DAY")
+        trade = ib.placeOrder(contract, order)
+        ib.sleep(2)
+        status = trade.orderStatus.status
+        sent[symbol] = {"qty": -qty, "tif": order.tif, "status": status}
+        print(f"leftover {symbol} {qty:g}: sent {order.action} {abs(qty):g} MKT {order.tif} "
+              f"({status})", flush=True)  # fmt: skip
+        if status in REJECTED:
+            log["leftovers"] = sent
+            raise GuardError(f"leftover close for {symbol} rejected")
+    log["leftovers"] = sent
+
+
+def alert(title: str, body: str = "") -> None:
+    """Urgent Discord/ntfy alert; never let a missing channel break the runner."""
+    try:
+        from horizon_trader.ops.notify import send
+
+        send(title, body, "urgent")
+    except BaseException as exc:  # noqa: BLE001 - SystemExit when no channel is configured
+        print(f"(alert not sent: {exc!r})", flush=True)
 
 
 def sync() -> None:
@@ -348,6 +458,8 @@ def sync() -> None:
         print(f"{n} fills booked; {STRATEGY} cash ${ledger.cash:,.2f}")
         if ledger.holdings:
             print(f"WARNING: not flat after the close: {ledger.holdings}")
+            alert(f"ORB (IBKR paper) ledger not flat: {ledger.holdings}",
+                  "The next run closes it at the open.")  # fmt: skip
         else:
             ledger.record_equity(day, {})
         reconcile(ib, account, ibkr_ledgers())

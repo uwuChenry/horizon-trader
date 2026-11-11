@@ -17,8 +17,15 @@ import horizon_trader.config  # noqa: F401  (loads .env)
 SUMMARY_TAGS = ("NetLiquidation", "TotalCashValue", "BuyingPower", "AvailableFunds")
 
 
+REQUEST_TIMEOUT = 60.0  # seconds; ib_async's default (0) waits forever on a stuck Gateway
+
+
 def connect(readonly: bool = True, client_id: int | None = None) -> IB:
-    """`client_id` overrides IB_CLIENT_ID so tools can run next to the daily run."""
+    """`client_id` overrides IB_CLIENT_ID so tools can run next to the daily run.
+
+    Every blocking request gets REQUEST_TIMEOUT: on 2026-11-10 the Gateway stopped answering
+    at ~15:43 and requests without a timeout (options capture, orb sync) hung until it
+    restarted at 23:42. Callers may lower it."""
     ib = IB()
     ib.connect(
         host=os.environ.get("IB_HOST", "127.0.0.1"),
@@ -27,6 +34,7 @@ def connect(readonly: bool = True, client_id: int | None = None) -> IB:
         readonly=readonly,
         timeout=10,
     )
+    ib.RequestTimeout = REQUEST_TIMEOUT
     return ib
 
 

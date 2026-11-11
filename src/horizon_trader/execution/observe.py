@@ -21,6 +21,7 @@ import pandas as pd
 from horizon_trader.config import data_dir
 
 NY = "America/New_York"
+CLIENT_ID = 34  # 31 is the journal's IBKR quotes; observe stays connected all session
 
 
 def clean(value):
@@ -142,7 +143,7 @@ def capture(seconds=20.0, session=False):
     log = EvidenceLog()
     log.write("start", readonly=True, requested_seconds=seconds, session=session)
     try:
-        ib = connect(readonly=True, client_id=31)
+        ib = connect(readonly=True, client_id=CLIENT_ID)
     except Exception as exc:
         log.write("connection_failed", error=type(exc).__name__, detail=str(exc))
         raise
@@ -276,7 +277,7 @@ def capture(seconds=20.0, session=False):
                 log.write("heartbeat", subscriptions=len(contracts), connected=ib.isConnected())
                 last_heartbeat = time.monotonic()
             if time.monotonic() - last_snapshot >= 60:
-                # Client 31 need not be the account's master API client. Read-only
+                # Client 34 need not be the account's master API client. Read-only
                 # snapshots cover orders/executions from other clients too; their
                 # observation timestamps have up to one minute of polling delay.
                 for trade in ib.reqAllOpenOrders():

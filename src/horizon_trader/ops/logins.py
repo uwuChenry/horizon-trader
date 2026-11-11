@@ -20,7 +20,8 @@ import subprocess
 
 import horizon_trader.config  # noqa: F401  (loads .env)
 
-GATEWAY_CLIENT_ID = 51  # scanner 11, orb 31/32, noise 41: keep clear of the job clients
+GATEWAY_CLIENT_ID = 51  # scanner 11, orb 21/22, journal 31, competition 32, options 33,
+# observe 34, noise 41: keep clear of the job clients
 CANARY_MODEL = "gpt-6.1-sol"  # the journal's and the monthly scores' model
 FIX = {
     "IB Gateway": "Remote into the mini, log in to IB Gateway (paper) and approve the 2FA "

@@ -1,9 +1,10 @@
 import clsx from "clsx";
-import { CircleCheck, CircleAlert, CircleX, OctagonX, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { CircleCheck, CircleAlert, CircleX, OctagonX, RefreshCw, Stethoscope } from "lucide-react";
 import { TimeChart } from "../components/charts";
 import { Bars } from "../components/charts";
 import { Button, Callout, Card, CardTitle, DataTable, Empty, ErrorState, Kpi, Loading, PageHeader } from "../components/ui";
-import { useLive, type Health, type Ledger } from "../lib/api";
+import { runHealthCheck, useLive, type Health, type HealthCheck, type Ledger } from "../lib/api";
 import { fixed, money, pct, tone } from "../lib/format";
 import { tokens } from "../lib/theme";
 
@@ -128,6 +129,44 @@ function LedgerCard({ l }: { l: Ledger }) {
   );
 }
 
+function HealthCard({ items }: { items: Health[] }) {
+  const [live, setLive] = useState<HealthCheck | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const run = async () => {
+    setRunning(true);
+    setError(null);
+    try {
+      setLive(await runHealthCheck());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRunning(false);
+    }
+  };
+  const when = live ? new Date(live.checked_at).toLocaleTimeString() : null;
+  return (
+    <Card>
+      <CardTitle
+        sub={
+          live
+            ? `Live check at ${when}, including a read-only IB Gateway connection`
+            : "Weekday jobs and connections from the files on disk; holidays are not excluded"
+        }
+        right={
+          <Button onClick={run} disabled={running} title="Run every check now, with a live IB Gateway connection">
+            <Stethoscope className={clsx("size-3.5", running && "animate-pulse")} /> {running ? "Checking..." : "Run live check"}
+          </Button>
+        }
+      >
+        Health
+      </CardTitle>
+      {error && <ErrorState error={error} />}
+      <HealthList items={live ? live.health : items} />
+    </Card>
+  );
+}
+
 export function LivePage() {
   const q = useLive();
   return (
@@ -155,10 +194,7 @@ export function LivePage() {
             </Callout>
           )}
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-            <Card>
-              <CardTitle sub="Weekday jobs and connections; holidays are not excluded">Health</CardTitle>
-              <HealthList items={q.data!.health} />
-            </Card>
+            <HealthCard items={q.data!.health} />
             <Card>
               <CardTitle sub="Read-only IB Gateway sessions, last 14 logged days">IBKR observations</CardTitle>
               <div className="space-y-1.5">
