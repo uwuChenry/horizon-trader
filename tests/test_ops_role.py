@@ -46,6 +46,8 @@ GUARDED = [
     ("horizon_trader.intraday.orb_live", ["run"]),
     ("horizon_trader.intraday.orb_live", ["sync"]),
     ("horizon_trader.agents.competition", ["run"]),
+    ("horizon_trader.agents.contest_trader", ["run"]),
+    ("horizon_trader.agents.contest_trader", ["sync"]),
     ("horizon_trader.agents.journal", ["run"]),
     ("horizon_trader.agents.journal", ["score"]),
     ("horizon_trader.llm.fundamentals", ["export"]),

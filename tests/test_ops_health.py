@@ -57,10 +57,10 @@ def test_failed_job_includes_log_tail(data):
     logs = data / "logs"
     logs.mkdir()
     lines = [f"line {i}" for i in range(30)]
-    (logs / "2026-11-05-journal.log").write_text("\n".join(lines), encoding="utf-8")
-    (logs / "2026-11-05-competition.log").write_text("boom", encoding="utf-8")
-    title, body, prio = H.message([], failed="journal", today=TODAY)
-    assert title == "horizon-trader: job journal failed" and prio == "high"
+    (logs / "2026-11-05-evening.log").write_text("\n".join(lines), encoding="utf-8")
+    (logs / "2026-11-05-contest.log").write_text("boom", encoding="utf-8")
+    title, body, prio = H.message([], failed="evening", today=TODAY)
+    assert title == "horizon-trader: job evening failed" and prio == "high"
     assert "line 29" in body and "line 9\n" not in body and "boom" in body
 
 

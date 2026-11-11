@@ -228,7 +228,51 @@ be closed; the exact cutoff time remains pending organizer clarification.
    Begin with manually reviewed simulated orders; automation requires separate
    derivatives handling, reconciliation and operational validation.
 
-## AI competition account on Alpaca (built 2026-11-05)
+## AI contest trader (built 2026-11-11, replaces the follower below)
+
+The follower never traded: the journal said "no new trade" on all four days from 2026-11-05 to
+2026-11-10 (its protocol makes that the normal answer), so the account sat at $5,000.00 with no
+fills. Owner's decision (2026-11-11): the AI entry decides for itself. **Fully discretionary**
+(any liquid US stock/ETF, long shares or long calls/puts), **no activity mandate** (the prompt
+says flat is allowed but explains why cash never wins a winner-take-all contest), swings and
+options first, intraday (ORB pick, QQQ noise) in phase 2. Model: `gpt-6-astra` at high reasoning
+effort through `codex exec`. The journal is untouched and stays a separate pre-registered test;
+its latest view is shown to the trader as one input.
+
+`agents/contest_trader.py` (prompts in `agents/contest_prompts.py`), one session a weekday at
+13:30 ET (`ops.jobs contest`) plus a sync in the 18:00 evening job:
+
+1. Code builds a briefing: account, positions with live marks, the track record of closed
+   positions, last session's rejected orders, the model's own **notebook** (its only memory,
+   rewritten every session, at most 250 words) and last 5 session summaries, the journal's
+   market packet and latest view, and a scan table of ~70 liquid names (returns, RSI(2)/RSI(14),
+   distance to moving averages and highs, ATR, dollar volume).
+2. **Research call** (web search on): news, a hold/close review of each position, 0-4 candidates.
+3. Code builds **option ladders** for exactly those candidates from real chains (live IBKR
+   bid/ask first): 3 expiries (~14/35/63 days), ATM to ~15% OTM, only contracts with open
+   interest >= 100 and a spread <= 25% of mid, each with breakeven, move to breakeven and the
+   expiry's ATM implied move.
+4. **Decision call** (no tools): position actions, orders that must name a ladder contract (so
+   no invented strikes or prices), an expected move that must beat the breakeven move, a new
+   notebook and a session summary.
+5. **Code checks** resize or reject every order; rejections are shown in the next briefing.
+
+| Rule (code) | Value |
+|---|---|
+| Positions | at most 6, one per underlying, at most 3 new per session |
+| Shares | at most 40% of equity per position, 100% in total (no margin), whole shares, stop at most 15% below the entry as a **GTC stop at Alpaca** |
+| Options | long calls/puts only, at most 20% of equity premium per position, 50% in total; the underlying stop/target are checked once per session (not instant) |
+| Liquidity | stock above $5 and over $50M a day; IEX spread <= 1% |
+| Exits by code | stop/target, the model's `exit_by`, option expiry eve, everything from 2026-12-28; no new positions after 2026-12-23 |
+| Guards | paper keys only, kill switch `data/live/KILL`, the account pinned on 2026-11-05 (`PA31SWJZFFPD`), positions must reconcile |
+
+Records: `data/live/competition_ai_paper/` (same ledger as the follower: equity.csv, fills.csv,
+state.json; `trader.json` holds positions, notebook and session summaries;
+`sessions/<date>_<HHMM>/` holds the briefing, both prompts and raw answers, the ladders, the
+check results and the summary). About 7 weeks of one model on simulated paper fills says nothing
+about skill: this is a contest entry and a harness test, reported as such.
+
+## AI competition account on Alpaca (built 2026-11-05, retired 2026-11-11)
 
 Owner's decision (2026-11-05): the AI entry follows the forecast journal
 ([research/forecast_journal](../forecast_journal/README.md)) instead of getting its own trader,

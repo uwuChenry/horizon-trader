@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader AI contest trader (Alpaca paper)
+
+[Timer]
+OnCalendar=Mon..Fri 13:30 America/New_York
+Unit=ht-job@contest.service
+# A late session would trade on stale quotes; the next weekday's session takes over.
+Persistent=false
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -2,10 +2,8 @@
 # and trader on GPT-6.1 Sol via `codex exec` (needs this user's Codex/ChatGPT login), then code prices and scores
 # a hypothetical book. The journal itself never places orders. Log: data/logs/<date>-journal.log
 #
-# Then the Alpaca competition follower executes the journal's new ideas in the AI competition
-# PAPER account (agents/competition.py; paper keys only, kill switch data/live/KILL). It runs
-# even if the journal failed, so planned closes (expiry eve, contest end) still happen.
-# Log: data/logs/<date>-competition.log
+# The AI competition account no longer follows the journal: the contest trader (contest.ps1,
+# 13:30) decides for itself and may read the journal's latest view as one input.
 # Steps now live in horizon_trader/ops/jobs.py.
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repo

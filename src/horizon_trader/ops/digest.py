@@ -22,6 +22,7 @@ DIGEST_JOBS = {
     "orb": "ORB (IBKR paper)",
     "orb_alpaca": "ORB (Alpaca paper)",
     "journal": "Journal",
+    "contest": "AI contest",
     "options_log": "Option chains",
     "evening": "Evening",
     "llm_monthly": "LLM fundamentals",
@@ -35,7 +36,7 @@ KEEP = re.compile(
     r"|underlyings captured|batches valid|top 20:|market closed|still working|DRY RUN"
     r"|pending orders filled|queued \d+ shadow|Traceback|[A-Za-z]+Error:|[1-9]\d* failed|failed:"
     r"|candidates|plan: |orders: |entry filled|stopped out|sent MOC|no fill|not flat"
-    r"|not shortable|decision"
+    r"|not shortable|decision|opened: |closed: |rejected: |updated: "
 )
 # IBKR's per-contract "no security definition" errors are routine during the option capture.
 DROP = re.compile(r"ib_async|^\+ |^At line:|^\s*\+ ~")

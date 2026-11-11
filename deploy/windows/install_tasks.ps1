@@ -7,10 +7,11 @@
 #   09:21 Mon-Fri  orb          ORB on IBKR paper: one bracket after 09:35 (IBKR manages the exit)
 #   09:21 Mon-Fri  orb_alpaca   ORB on Alpaca paper (same pick), runs until ~16:10
 #   09:25 Mon-Fri  noise        QQQ noise area, runs until ~16:05
+#   13:30 Mon-Fri  contest      AI contest trader on its Alpaca paper account
 #   14:30 Mon-Fri  canary       login check + one tiny codex exec call before the journal
-#   15:00 Mon-Fri  journal      forecast journal + Alpaca competition follower
+#   15:00 Mon-Fri  journal      forecast journal (no orders)
 #   15:35 Mon-Fri  options_log  IBKR option-chain snapshot
-#   18:00 Mon-Fri  evening      shadow + Alpaca daily book + competition sync + ORB fills (IBKR)
+#   18:00 Mon-Fri  evening      shadow + Alpaca daily book + contest sync + ORB fills (IBKR)
 #   18:30 Mon-Fri  health       health report; "all OK" message on a clean day
 #   at logon       dashboard    read-only dashboard on HT_DASHBOARD_HOST
 #   every 5 min    gateway_watchdog  Sun-Fri 07:05-23:30: restarts a dead or frozen IB Gateway
@@ -33,6 +34,7 @@ $jobs = @(
     @{Name = "orb"; At = "09:21"; Hours = 7},
     @{Name = "orb_alpaca"; At = "09:21"; Hours = 8},
     @{Name = "noise"; At = "09:25"; Hours = 8},
+    @{Name = "contest"; At = "13:30"; Hours = 2},
     @{Name = "canary"; Script = "logins"; Args = "-Canary"; At = "14:30"; Hours = 1},
     @{Name = "journal"; At = "15:00"},
     @{Name = "options_log"; At = "15:35"},

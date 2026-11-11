@@ -49,6 +49,7 @@ JOBS = (
     "orb_alpaca",
     "observe",
     "journal",
+    "contest",
     "options_log",
     "evening",
     "llm_monthly",
@@ -89,9 +90,7 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
     massive = "horizon_trader.datasources.massive"
     scanner = "horizon_trader.intraday.scanner_log"
     orb_live = "horizon_trader.intraday.orb_live"
-    competition = Step(
-        "competition", "horizon_trader.agents.competition", ("run",), "competition", timeout=900
-    )
+    contest = "horizon_trader.agents.contest_trader"
     if job == "morning":
         return (
             Step("massive day", massive, ("download", "--dataset", "day"), "morning"),
@@ -145,7 +144,9 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
         journal = Step(
             "journal", "horizon_trader.agents.journal", ("run",), "journal", timeout=3600
         )
-        return (journal, competition)
+        return (journal,)
+    if job == "contest":  # AI contest trader on its Alpaca paper account: research + decide
+        return (Step("contest", contest, ("run",), "contest", timeout=3000),)
     if job == "options_log":
         return (
             Step(
@@ -166,7 +167,7 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
                 "evening",
                 when=_alpaca_enabled,
             ),
-            competition,
+            Step("contest sync", contest, ("sync",), "contest", timeout=900),
             # IBKR returns today's fills only; a stuck Gateway once held this for 5.7 hours
             Step("orb sync", orb_live, ("sync",), "orb", timeout=900),
         )

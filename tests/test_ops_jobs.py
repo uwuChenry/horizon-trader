@@ -51,7 +51,9 @@ EXPECTED = {
     ],
     "journal": [
         ("run", "agents.journal", ["run"], "journal"),
-        ("run", "agents.competition", ["run"], "competition"),
+    ],
+    "contest": [
+        ("run", "agents.contest_trader", ["run"], "contest"),
     ],
     "options_log": [
         ("run", "datasources.ibkr_options_log", ["capture"], "options"),
@@ -59,7 +61,7 @@ EXPECTED = {
     "evening": [
         ("run", "run_daily", ["--mode", "shadow"], "evening"),
         ("run", "run_daily", ["--mode", "alpaca"], "evening"),
-        ("run", "agents.competition", ["run"], "competition"),
+        ("run", "agents.contest_trader", ["sync"], "contest"),
         ("run", "intraday.orb_live", ["sync"], "orb"),
     ],
     "llm_monthly": [
@@ -173,19 +175,16 @@ def test_alpaca_condition(key, enabled, monkeypatch):
     assert args == [
         ["--mode", "shadow"],
         *([["--mode", "alpaca"]] if enabled else []),
-        ["run"],
+        ["sync"],
         ["sync"],
     ]
 
 
 @pytest.mark.parametrize("failure", [8, OSError("cannot start journal")])
-def test_competition_runs_after_journal_failure(failure, tmp_path):
-    fake = FakeRunner([failure, 0])
+def test_journal_failure_is_logged(failure, tmp_path):
+    fake = FakeRunner([failure])
     assert jobs.run_job("journal", TODAY, fake) == 1
-    assert [command[2] for _, command, _ in fake.calls] == [
-        "horizon_trader.agents.journal",
-        "horizon_trader.agents.competition",
-    ]
+    assert [command[2] for _, command, _ in fake.calls] == ["horizon_trader.agents.journal"]
     log = (tmp_path / "logs" / f"{TODAY}-journal.log").read_text(encoding="utf-8")
     assert "exit 8" in log if isinstance(failure, int) else "OSError: cannot start journal" in log
 
@@ -465,7 +464,7 @@ def test_evening_digest_keeps_key_lines_without_log_noise(monkeypatch):
     assert jobs.run_job("evening", TODAY, runner, notifier=notifier) == 0
     [(title, body, level)] = sent
     assert title == f"Evening {TODAY}" and level == "info"
-    assert "[shadow]" in body and "[alpaca]" in body and "[competition]" in body
+    assert "[shadow]" in body and "[alpaca]" in body and "[contest sync]" in body
     assert "daily_book_shadow: equity $4,839.35, cash $1,691.58" in body
     assert "sent 3 orders for the next open to the broker" in body
     assert "as of" not in body and "INFO" not in body and "child output" not in body

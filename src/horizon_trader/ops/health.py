@@ -32,9 +32,10 @@ LOG_SUFFIXES = {
     "orb": ["orb"],
     "orb_alpaca": ["orb-alpaca"],
     "observe": ["observe"],
-    "journal": ["journal", "competition"],
+    "journal": ["journal"],
+    "contest": ["contest"],
     "options_log": ["options"],
-    "evening": ["evening", "competition", "orb"],
+    "evening": ["evening", "contest", "orb"],
     "llm_monthly": ["llm-fundamentals"],
 }
 DISK_WARN, DISK_BAD = 0.15, 0.05  # free share of the data disk
