@@ -256,12 +256,17 @@ its latest view is shown to the trader as one input.
    no invented strikes or prices), an expected move that must beat the breakeven move, a new
    notebook and a session summary.
 5. **Code checks** resize or reject every order; rejections are shown in the next briefing.
+6. **Watch** (added 2026-11-11, `ops.jobs contest_watch`, 09:40 until 10 minutes before the
+   close, every 15 minutes, no LLM): books fills (an entry that fills after the session gets
+   its broker stop), re-places missing stops and takes the code exits, using IBKR's
+   consolidated NBBO for the underlying (Alpaca's IEX-only quote when Gateway is down).
+   Session, watch and sync share a lock file so only one writes the state at a time.
 
 | Rule (code) | Value |
 |---|---|
 | Positions | at most 6, one per underlying, at most 3 new per session |
 | Shares | at most 40% of equity per position, 100% in total (no margin), whole shares, stop at most 15% below the entry as a **GTC stop at Alpaca** |
-| Options | long calls/puts only, at most 20% of equity premium per position, 50% in total; the underlying stop/target are checked once per session (not instant) |
+| Options | long calls/puts only, at most 20% of equity premium per position, 50% in total; the underlying stop/target are checked every 15 minutes by `watch` (not instant: a quick wick between checks is missed) |
 | Liquidity | stock above $5 and over $50M a day; IEX spread <= 1% |
 | Exits by code | stop/target, the model's `exit_by`, option expiry eve, everything from 2026-12-28; no new positions after 2026-12-23 |
 | Guards | paper keys only, kill switch `data/live/KILL`, the account pinned on 2026-11-05 (`PA31SWJZFFPD`), positions must reconcile |

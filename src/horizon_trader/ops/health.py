@@ -34,6 +34,7 @@ LOG_SUFFIXES = {
     "observe": ["observe"],
     "journal": ["journal"],
     "contest": ["contest"],
+    "contest_watch": ["contest-watch"],
     "options_log": ["options"],
     "evening": ["evening", "contest", "orb"],
     "llm_monthly": ["llm-fundamentals"],

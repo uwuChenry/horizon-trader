@@ -1,13 +1,15 @@
-"""Live option quotes (bid/ask) from IBKR, read-only, for a handful of contracts at a time.
+"""Live quotes (bid/ask) from IBKR, read-only, for a handful of options or stocks at a time.
 
 Used by the forecast journal (agents/market.py: the legs it prices, the positions it marks and
-the packet's implied moves) and by the Alpaca competition follower (its limit prices). Callers
-fall back to their delayed/indicative source for any contract this returns nothing for:
-Gateway down, not logged in, market closed, or no quote yet.
+the packet's implied moves) and by the AI contest trader (option limits, stock quotes and the
+underlying prices its stops watch). Callers fall back to their delayed/indicative source for any
+symbol this returns nothing for: Gateway down, not logged in, market closed, or no quote yet.
 
-    IBKRQuotes().quotes(["SPY261218C00770000"]) -> {"SPY261218C00770000": (bid, ask)}
+    IBKRQuotes().quotes(["SPY261218C00770000", "NVDA"]) -> {symbol: (bid, ask)}
 
-Symbols are OCC-style as Yahoo writes them: ROOT + YYMMDD + C/P + strike x 1000 (8 digits).
+Option symbols are OCC-style as Yahoo writes them: ROOT + YYMMDD + C/P + strike x 1000
+(8 digits). Anything else is a US stock/ETF ticker, quoted on SMART: the consolidated NBBO from
+the account's real-time US equity subscription (unlike Alpaca's free feed, which is IEX only).
 The connection is `readonly=True` (it can't place orders) with its own client id, opened on the
 first request and closed at exit. Needs the account's OPRA subscription shared with the paper
 login; requests are chunked to stay under IBKR's 100 simultaneous market-data lines.
@@ -89,13 +91,15 @@ class IBKRQuotes:
         return out
 
     def _batch(self, ib, symbols: list[str]) -> dict[str, tuple[float, float]]:
-        from ib_async import Option
+        from ib_async import Option, Stock
 
         contracts = {}
         for s in symbols:
             try:
                 root, expiry, right, strike = parse_occ(s)
             except ValueError:
+                if s.isalpha() or s.replace(".", "").isalpha():  # a stock/ETF ticker
+                    contracts[s] = Stock(s.replace(".", " "), "SMART", "USD")
                 continue
             contracts[s] = Option(root, expiry, strike, right, "SMART", currency="USD",
                                   multiplier="100", tradingClass=root)  # fmt: skip

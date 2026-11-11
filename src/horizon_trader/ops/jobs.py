@@ -50,6 +50,7 @@ JOBS = (
     "observe",
     "journal",
     "contest",
+    "contest_watch",
     "options_log",
     "evening",
     "llm_monthly",
@@ -147,6 +148,8 @@ def job_steps(job: str, today: date) -> tuple[Step, ...]:
         return (journal,)
     if job == "contest":  # AI contest trader on its Alpaca paper account: research + decide
         return (Step("contest", contest, ("run",), "contest", timeout=3000),)
+    if job == "contest_watch":  # no LLM: fills, broker stops, option stops/targets, all day
+        return (Step("contest watch", contest, ("watch",), "contest-watch"),)
     if job == "options_log":
         return (
             Step(

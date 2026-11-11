@@ -141,6 +141,7 @@ class AlpacaPaper:
         self.stocks = StockHistoricalDataClient(key, secret)
         self.live_quotes = live_quotes
         self.last_quote_source = ""
+        self.last_stock_source = ""
 
     def account(self) -> dict:
         a = self.trading.get_account()
@@ -180,6 +181,14 @@ class AlpacaPaper:
         return {s: (float(v.bid_price or 0), float(v.ask_price or 0)) for s, v in q.items()}
 
     def stock_quote(self, symbol: str) -> tuple[float, float]:
+        """(bid, ask): IBKR's consolidated NBBO when `live_quotes` has it, else Alpaca's free
+        IEX quote (one exchange, ~2-3% of volume: often wider, sometimes 0 before the open)."""
+        if self.live_quotes is not None:
+            got = self.live_quotes.quotes([symbol])
+            if symbol in got:
+                self.last_stock_source = "ibkr"
+                return got[symbol]
+        self.last_stock_source = "alpaca-iex"
         from alpaca.data.enums import DataFeed
         from alpaca.data.requests import StockLatestQuoteRequest
 

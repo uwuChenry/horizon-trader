@@ -23,6 +23,7 @@ DIGEST_JOBS = {
     "orb_alpaca": "ORB (Alpaca paper)",
     "journal": "Journal",
     "contest": "AI contest",
+    "contest_watch": "AI contest watch",
     "options_log": "Option chains",
     "evening": "Evening",
     "llm_monthly": "LLM fundamentals",

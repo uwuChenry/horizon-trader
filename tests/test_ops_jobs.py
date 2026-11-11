@@ -55,6 +55,9 @@ EXPECTED = {
     "contest": [
         ("run", "agents.contest_trader", ["run"], "contest"),
     ],
+    "contest_watch": [
+        ("run", "agents.contest_trader", ["watch"], "contest-watch"),
+    ],
     "options_log": [
         ("run", "datasources.ibkr_options_log", ["capture"], "options"),
     ],

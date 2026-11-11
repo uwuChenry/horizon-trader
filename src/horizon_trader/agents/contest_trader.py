@@ -3,6 +3,7 @@ account by itself. Replaces the journal follower (`agents/competition.py`), whic
 because the journal's protocol makes "no new trade" the normal answer.
 
     uv run python -m horizon_trader.agents.contest_trader run [--dry-run]  # one session (13:30 ET)
+    uv run python -m horizon_trader.agents.contest_trader watch [--every 15]  # 09:40 to close
     uv run python -m horizon_trader.agents.contest_trader sync             # book fills (18:00)
     uv run python -m horizon_trader.agents.contest_trader status
     uv run python -m horizon_trader.agents.contest_trader kill             # KILL file + cancel
@@ -24,6 +25,13 @@ A session:
 Everything (briefing, prompts, raw answers, ladders, checks, orders) is saved under
 data/live/competition_ai_paper/sessions/<date>_<HHMM>/.
 
+`watch` (no LLM) repeats steps 1-3 every 15 minutes from 09:40 until 10 minutes before the
+close: it books fills (entries that filled after the session get their broker stop) and takes
+the code exits, so an option's underlying stop/target is checked through the day instead of
+once at 13:30. Underlying prices come from IBKR's NBBO (Alpaca's IEX quote if Gateway is
+down). Session, watch and sync share a lock file (`trader.lock`), so they never write the
+state at the same time.
+
 Paper fills are simulated and ~7 weeks of one model says nothing about skill: this is a contest
 entry and a harness test (research/competition/README.md, "AI contest trader").
 """
@@ -34,8 +42,10 @@ import argparse
 import json
 import logging
 import math
+import os
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -173,6 +183,43 @@ class SessionLog:
 
     def json(self, name: str, obj) -> None:
         self.text(name, json.dumps(obj, indent=1, default=str))
+
+
+class LockBusy(RuntimeError):
+    """Another run (session, watch or sync) is using the state."""
+
+
+@contextmanager
+def trader_lock(root: Path | None = None, wait: float = 0.0, stale: float = 3600.0,
+                sleep: Callable[[float], None] = time.sleep) -> Iterator[None]:  # fmt: skip
+    """Exclusive lock on trader.json. A lock older than `stale` seconds belongs to a crashed run
+    and is broken (a session's own timeout is 50 minutes)."""
+    path = folder(root) / "trader.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                age = time.time() - path.stat().st_mtime
+            except FileNotFoundError:
+                continue
+            if age > stale:
+                log.warning("breaking a stale lock (%.0f min old)", age / 60)
+                path.unlink(missing_ok=True)
+                continue
+            if time.monotonic() >= deadline:
+                raise LockBusy(f"{path} is held ({path.read_text(errors='replace')})") from None
+            sleep(5)
+            continue
+        os.write(fd, f"pid {os.getpid()} since {datetime.now(NY):%H:%M:%S}".encode())
+        os.close(fd)
+        break
+    try:
+        yield
+    finally:
+        path.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------- indicators and scan
@@ -801,20 +848,7 @@ def run(broker, market, bars_src, *, runner: Callable = default_runner, today: s
             if not o.get("booked") and o["role"] == "open" and not dry_run:
                 broker.cancel(o["client_id"])
     summary["booked"] += _sync_all(broker, state, dry_run, root)
-    reconcile(state, broker.positions())
-    for pos in state["positions"].values():
-        if pos["status"] == "open":
-            place_stop(broker, pos, dry_run)
-
-    spots = {p["ticker"]: _spot(broker, p["ticker"]) for p in state["positions"].values()
-             if p["status"] in OPEN_STATES}  # fmt: skip
-    for pid, pos in state["positions"].items():
-        if pos["status"] != "open":
-            continue
-        why = mechanical_exit(pos, today, spots.get(pos["ticker"]), rules)
-        if why:
-            close_position(broker, pos, why, dry_run)
-            summary["closed"].append(f"{pid} {pos['ticker']} ({why})")
+    spots = housekeeping(broker, state, today, rules, summary, dry_run)
     late = now.strftime("%H:%M") > rules.open_cutoff and not force
     if today >= rules.close_all_from or late:
         log.info("no LLM session: contest end or after %s", rules.open_cutoff)
@@ -970,6 +1004,81 @@ def run(broker, market, bars_src, *, runner: Callable = default_runner, today: s
     return _finish(broker, state, summary, today, root, dry_run)
 
 
+def housekeeping(broker, state: dict, today: str, rules: Rules, summary: dict,
+                 dry_run: bool) -> dict[str, float | None]:  # fmt: skip
+    """Reconcile, broker stops for filled shares, code exits. Shared by the session and watch.
+    Returns the underlying prices it used (ticker -> mid, None without a quote)."""
+    working = [o["client_id"] for p in state["positions"].values() for o in p["orders"]
+               if not o.get("booked") and o["role"] in ("open", "close")]  # fmt: skip
+    if working:  # a partial fill shows as a gap until the order finishes
+        log.info("orders still working (%s): reconcile skipped", ", ".join(working))
+    else:
+        reconcile(state, broker.positions())
+    for pos in state["positions"].values():
+        if pos["status"] == "open":
+            place_stop(broker, pos, dry_run)
+    spots = {p["ticker"]: _spot(broker, p["ticker"]) for p in state["positions"].values()
+             if p["status"] in OPEN_STATES}  # fmt: skip
+    for pid, pos in state["positions"].items():
+        if pos["status"] != "open":
+            continue
+        why = mechanical_exit(pos, today, spots.get(pos["ticker"]), rules)
+        if why:
+            close_position(broker, pos, why, dry_run)
+            summary["closed"].append(f"{pid} {pos['ticker']} ({why})")
+    return spots
+
+
+def check(broker, *, now: datetime | None = None, rules: Rules | None = None,
+          root: Path | None = None) -> dict:  # fmt: skip
+    """One watch tick, no LLM: book fills, re-place missing broker stops, take code exits."""
+    rules = rules or Rules()
+    now = now or datetime.now(NY)
+    today = now.strftime("%Y-%m-%d")
+    state = load_state(root)
+    acct = _guards(broker, state, today, rules, dry_run=False)
+    summary = {"date": today, "account": acct["account"], "closed": [], "booked": 0}
+    summary["booked"] = _sync_all(broker, state, False, root)
+    if broker.is_open():
+        summary["spots"] = housekeeping(broker, state, today, rules, summary, False)
+    return _finish(broker, state, summary, today, root, False)
+
+
+def watch(broker, *, every: float = 900.0, stop_before: int = 10, rules: Rules | None = None,
+          root: Path | None = None, clock: Callable[[], datetime] = lambda: datetime.now(NY),
+          sleep: Callable[[float], None] = time.sleep) -> int:  # fmt: skip
+    """`check` every `every` seconds until `stop_before` minutes before today's close (half
+    days included). Returns the number of checks done."""
+    today = clock().strftime("%Y-%m-%d")
+    hours = broker.session(today)
+    if hours is None:
+        log.info("market closed today: nothing to watch")
+        return 0
+    end = pd.Timestamp(f"{today} {hours[1]}") - pd.Timedelta(minutes=stop_before)
+    end = end.strftime("%H:%M")
+    log.info("watching every %.0f min until %s ET", every / 60, end)
+    done = 0
+    while clock().strftime("%H:%M") < end:
+        if kill_switch_path().exists():
+            log.warning("kill switch is on: watch stops")
+            break
+        try:
+            with trader_lock(root):
+                s = check(broker, now=clock(), rules=rules, root=root)
+            done += 1
+            for line in s["closed"]:
+                log.info("closed: %s", line)
+            spots = ", ".join(f"{t} {v:.2f}" for t, v in (s.get("spots") or {}).items() if v)
+            log.info("check %d: equity $%s, fills booked %d%s", done, f"{s['equity']:,.2f}",
+                     s["booked"], f"; {spots}" if spots else "")  # fmt: skip
+        except LockBusy:
+            log.info("a session or sync holds the lock: skipping this check")
+        except GuardError as exc:  # e.g. a position gap: keep watching; the log is the alert
+            log.error("GuardError: %s", exc)
+        sleep(every)
+    return done
+
+
 def _finish(broker, state, summary, today, root, dry_run) -> dict:
     if not dry_run:  # book closes sent this run (market orders usually fill at once)
         summary["booked"] += _sync_all(broker, state, dry_run, root)
@@ -1015,13 +1124,18 @@ def status(root: Path | None = None) -> None:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    p.add_argument("command", choices=["run", "sync", "status", "kill"])
+    p.add_argument("command", choices=["run", "watch", "sync", "status", "kill"])
     p.add_argument(
         "--dry-run",
         action="store_true",
         help="research + decide + check, print the orders; send and save nothing",
     )
-    p.add_argument("--no-ibkr", action="store_true", help="no live IBKR option quotes")
+    p.add_argument(
+        "--no-ibkr",
+        action="store_true",
+        help="no IBKR quotes: Alpaca IEX stock and indicative option quotes only",
+    )
+    p.add_argument("--every", type=float, default=15.0, help="watch: minutes between checks")
     p.add_argument(
         "--force",
         action="store_true",
@@ -1033,23 +1147,32 @@ def main() -> None:
     if a.command == "status":
         status()
         return
-    if a.command in ("run", "sync") and not a.dry_run:
+    if a.command in ("run", "watch", "sync") and not a.dry_run:
         config.require_ops(f"{a.command} the AI contest trader")
     from horizon_trader.agents.market import YahooMarket
     from horizon_trader.datasources.ibkr_quotes import IBKRQuotes
     from horizon_trader.execution.alpaca_broker import AlpacaPaper
 
-    quotes = None if a.no_ibkr else IBKRQuotes(client_id=32)
+    # IBKR client ids: session/sync 32, watch 35 (the two overlap during the 13:30 session)
+    quotes = None if a.no_ibkr else IBKRQuotes(client_id=35 if a.command == "watch" else 32)
     broker = AlpacaPaper("ALPACA_COMPETITION_AI", live_quotes=quotes)
     if a.command == "kill":
         kill(broker)
         return
+    if a.command == "watch":
+        print(f"watch done: {watch(broker, every=a.every * 60)} checks")
+        return
     if a.command == "sync":
-        s = sync_only(broker)
+        with trader_lock(wait=900):
+            s = sync_only(broker)
         print(f"{s['date']} account {s['account']} equity ${s['equity']:,.2f} "
               f"(fills booked: {s['booked']})")  # fmt: skip
         return
-    s = run(broker, YahooMarket(quotes=quotes), YahooBars(), dry_run=a.dry_run, force=a.force)
+    if a.dry_run:  # reads the state only, so no lock (the research PC's copy is read-only)
+        s = run(broker, YahooMarket(quotes=quotes), YahooBars(), dry_run=True, force=a.force)
+    else:
+        with trader_lock(wait=900):
+            s = run(broker, YahooMarket(quotes=quotes), YahooBars())
     print(f"{s['date']} account {s['account']} equity ${s['equity']:,.2f} "
           f"(fills booked: {s['booked']})")  # fmt: skip
     for k in ("closed", "updated", "opened", "rejected"):

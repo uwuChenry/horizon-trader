@@ -101,3 +101,38 @@ def test_alpaca_uses_ibkr_only_when_it_has_every_leg():
     got = broker.option_quotes([A, C])  # IBKR lacks C -> both legs from Alpaca
     assert broker.last_quote_source == "alpaca-indicative" and got[A] == (1.0, 1.2)
     assert not math.isnan(got[C][0])
+
+
+def test_stock_tickers_get_live_nbbo():
+    ib = FakeIB({("NVDA", "", "", 0.0): (199.98, 200.02), A_KEY: (14.9, 15.1)})
+    q = IBKRQuotes(ib=ib, timeout=0.01)
+    assert q.quotes(["NVDA", A]) == {"NVDA": (199.98, 200.02), A: (14.9, 15.1)}
+    stock = next(c for c in ib.requested if c.symbol == "NVDA")
+    assert stock.secType == "STK" and stock.exchange == "SMART" and stock.currency == "USD"
+
+
+A_KEY = ("SPY", "20261218", "C", 770.0)
+
+
+def test_alpaca_stock_quote_prefers_ibkr_then_iex():
+    class Live:
+        def __init__(self, have):
+            self.have = have
+
+        def quotes(self, symbols):
+            return {s: (99.99, 100.01) for s in symbols if s in self.have}
+
+    class IEX:  # stands in for Alpaca's stock data client
+        def get_stock_latest_quote(self, req):
+            class Q:
+                bid_price, ask_price = 99.5, 100.5
+
+            return {req.symbol_or_symbols: Q()}
+
+    broker = AlpacaPaper.__new__(AlpacaPaper)
+    broker.stocks, broker.live_quotes = IEX(), Live({"NVDA"})
+    assert broker.stock_quote("NVDA") == (99.99, 100.01) and broker.last_stock_source == "ibkr"
+    assert broker.stock_quote("AMD") == (99.5, 100.5)
+    assert broker.last_stock_source == "alpaca-iex"
+    broker.live_quotes = None
+    assert broker.stock_quote("NVDA") == (99.5, 100.5)

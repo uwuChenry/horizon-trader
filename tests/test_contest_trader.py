@@ -412,3 +412,126 @@ def test_no_new_positions_after_last_open(tmp_path):
     s = go(b, script(research([cand("NVDA")]), decision([order("NVDA", exit_by="2026-12-24")])),
            tmp_path, today="2026-12-24", now=datetime(2026, 12, 24, 12, 0, tzinfo=NY))  # fmt: skip
     assert not s["opened"] and "no new positions" in s["rejected"][0]
+
+
+# ---------------------------------------------------------------- watch (no LLM) and the lock
+
+
+class WatchAlpaca(FakeAlpaca):
+    """Entries can be left working (`hold_entries`); knows today's session hours."""
+
+    def __init__(self, hold_entries=False, close="16:00", **kw):
+        super().__init__(**kw)
+        self.hold, self.close, self.held_specs = hold_entries, close, {}
+
+    def session(self, day):
+        return ("09:30", self.close)
+
+    def submit(self, spec):
+        if self.hold and spec.client_id.endswith("-open"):
+            self.sent.append(spec)
+            info = OrderInfo(spec.client_id, "new", 0.0, None, None, [])
+            self.orders[spec.client_id] = info
+            self.held_specs[spec.client_id] = spec
+            return info
+        return super().submit(spec)
+
+    def fill_held(self):
+        for cid, spec in self.held_specs.items():
+            if not self.orders[cid].final:
+                self._fill(spec, spec.limit)
+
+
+def _clock(times):
+    it = iter(times)
+    return lambda: next(it)
+
+
+def at(hhmm, day=DAY):
+    h, m = map(int, hhmm.split(":"))
+    y, mo, d = map(int, day.split("-"))
+    return datetime(y, mo, d, h, m, tzinfo=NY)
+
+
+def test_check_takes_an_option_stop_during_the_day(tmp_path):
+    b = WatchAlpaca()
+    opt = decision([order("AMD", "option", CALL, qty=1, stop=225.0)])
+    go(b, script(research([cand("AMD")]), opt), tmp_path)
+    b.stock["AMD"] = (224.0, 224.2)  # 14:15: through the underlying stop
+    b.opt[CALL] = (2.0, 2.2)  # the call lost most of its value
+    s = T.check(b, now=at("14:15"), root=tmp_path)
+    assert s["closed"] and "stop" in s["closed"][0]
+    assert b.positions() == {}
+    pos = next(iter(T.load_state(tmp_path)["positions"].values()))
+    assert pos["status"] == "closed" and pos["realized"] < 0
+
+
+def test_check_books_a_late_entry_and_puts_its_stop_at_the_broker(tmp_path):
+    b = WatchAlpaca(hold_entries=True)
+    go(b, script(research([cand("NVDA")]), decision([order("NVDA", qty=5)])), tmp_path)
+    assert not [x for x in b.sent if x.stop is not None]  # entry still working at 13:31
+    T.check(b, now=at("13:45"), root=tmp_path)  # still working: no reconcile gap raised
+    b.fill_held()
+    T.check(b, now=at("14:00"), root=tmp_path)
+    stops = [x for x in b.sent if x.stop is not None]
+    assert len(stops) == 1 and stops[0].tif == "gtc" and stops[0].qty == 5
+    assert next(iter(T.load_state(tmp_path)["positions"].values()))["status"] == "open"
+
+
+def test_watch_runs_until_ten_minutes_before_the_close(tmp_path):
+    b = WatchAlpaca()
+    times = [at("09:40")] + [at(t) for t in ("09:40", "09:40", "09:55", "09:55", "15:50")]
+    n = T.watch(b, every=900, root=tmp_path, clock=_clock(times), sleep=lambda s: None)
+    assert n == 2  # 09:40 and 09:55; stops at 15:50
+    assert (T.folder(tmp_path) / "equity.csv").exists()
+
+
+def test_watch_respects_half_days_and_closed_days(tmp_path):
+    half = WatchAlpaca(close="13:00")
+    times = [at("12:55"), at("12:55")]
+    assert T.watch(half, root=tmp_path, clock=_clock(times), sleep=lambda s: None) == 0
+
+    class Closed(WatchAlpaca):
+        def session(self, day):
+            return None
+
+    assert T.watch(Closed(), root=tmp_path, clock=_clock([at("10:00")])) == 0
+
+
+def test_watch_skips_while_a_session_holds_the_lock_and_stops_on_kill(tmp_path):
+    b = WatchAlpaca()
+    times = [at("10:00"), at("10:00"), at("10:00"), at("10:15"), at("10:15")]
+    with T.trader_lock(tmp_path):
+        n = T.watch(b, root=tmp_path, clock=_clock(times[:3] + [at("15:55")]),
+                    sleep=lambda s: None)  # fmt: skip
+    assert n == 0
+    T.kill_switch_path().parent.mkdir(parents=True, exist_ok=True)
+    T.kill_switch_path().write_text("x")
+    assert T.watch(b, root=tmp_path, clock=_clock(times), sleep=lambda s: None) == 0
+
+
+def test_watch_logs_a_guard_error_and_keeps_going(tmp_path, caplog):
+    b = WatchAlpaca()
+    T.save_state(T.load_state(tmp_path) | {"account": "PA9"}, tmp_path)
+    times = [at("10:00"), at("10:00"), at("10:00"), at("15:55")]
+    assert T.watch(b, root=tmp_path, clock=_clock(times), sleep=lambda s: None) == 0
+    assert "GuardError" in caplog.text
+
+
+def test_lock_is_exclusive_waits_and_breaks_stale_locks(tmp_path):
+    with T.trader_lock(tmp_path):
+        with pytest.raises(T.LockBusy):
+            with T.trader_lock(tmp_path):
+                pass
+        with pytest.raises(T.LockBusy):  # waits, then gives up
+            with T.trader_lock(tmp_path, wait=0.01, sleep=lambda s: None):
+                pass
+    assert not (T.folder(tmp_path) / "trader.lock").exists()  # released
+    lock = T.folder(tmp_path) / "trader.lock"
+    lock.write_text("pid 1")
+    old = lock.stat().st_mtime - 7200
+    import os
+
+    os.utime(lock, (old, old))
+    with T.trader_lock(tmp_path):  # a crashed run's lock is broken
+        pass

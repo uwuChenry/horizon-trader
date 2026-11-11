@@ -7,6 +7,7 @@
 #   09:21 Mon-Fri  orb          ORB on IBKR paper: one bracket after 09:35 (IBKR manages the exit)
 #   09:21 Mon-Fri  orb_alpaca   ORB on Alpaca paper (same pick), runs until ~16:10
 #   09:25 Mon-Fri  noise        QQQ noise area, runs until ~16:05
+#   09:40 Mon-Fri  contest_watch  AI contest: fills, broker stops, option stops (no LLM), to ~15:50
 #   13:30 Mon-Fri  contest      AI contest trader on its Alpaca paper account
 #   14:30 Mon-Fri  canary       login check + one tiny codex exec call before the journal
 #   15:00 Mon-Fri  journal      forecast journal (no orders)
@@ -34,6 +35,7 @@ $jobs = @(
     @{Name = "orb"; At = "09:21"; Hours = 7},
     @{Name = "orb_alpaca"; At = "09:21"; Hours = 8},
     @{Name = "noise"; At = "09:25"; Hours = 8},
+    @{Name = "contest_watch"; At = "09:40"; Hours = 7},
     @{Name = "contest"; At = "13:30"; Hours = 2},
     @{Name = "canary"; Script = "logins"; Args = "-Canary"; At = "14:30"; Hours = 1},
     @{Name = "journal"; At = "15:00"},

@@ -1,0 +1,12 @@
+[Unit]
+Description=horizon-trader AI contest watch (no LLM; fills, stops, option exits)
+
+[Timer]
+OnCalendar=Mon..Fri 09:40 America/New_York
+Unit=ht-job@contest_watch.service
+# Started late it still watches the rest of the session.
+Persistent=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
