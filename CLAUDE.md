@@ -55,6 +55,7 @@ uv run python -m horizon_trader.ops.jobs morning|scanner|noise|orb|orb_alpaca|ob
 uv run python -m horizon_trader.ops.health [--notify] [--failed JOB]  # job health (same checks as the Live page); --notify alerts problems (Discord/ntfy), --daily also says all-OK
 uv run python -m horizon_trader.ops.logins [--canary] [--notify]  # IB Gateway / Codex / Claude logins (+ one tiny codex exec call); urgent alert on failure
 uv run python -m horizon_trader.ops.notify "title" ["body"] [info|warn|urgent]  # send a test alert (DISCORD_WEBHOOK_URL + DISCORD_USER_ID and/or NTFY_TOPIC)
+uv run python -m horizon_trader.ops.gateway_watchdog [--dry]   # live IB Gateway probe (every 5 min Sun-Fri 07:05-23:30, deploy/windows/install_watchdog.ps1); 2 failures -> kill the Gateway java.exe + restart the IBC task + urgent alert; max 3/day
 deploy/linux/install.sh [--with-gateway]                        # mini PC: systemd --user timers (ET): 08:00 morning (Massive downloads + momentum orders + monthly LLM scores if due), 09:20 scanner log, 09:24 observe, 09:25 QQQ noise (all day), 15:00 journal + competition follower, 15:35 options, 18:00 evening, 18:30 health, 19:00 backup
 deploy/linux/deploy.sh [--force]                                # mini PC: pull master, sync, test (rolls back on failure), rebuild web, restart; refuses 09:24-16:05 ET
 powershell -File deploy/windows/install_tasks.ps1             # ops machine (Windows): every task (07:30 Sun-Fri logins, jobs above, 14:30 canary, 18:30 health, dashboard at logon, observer); .ps1 files call ops.jobs and alert on failure

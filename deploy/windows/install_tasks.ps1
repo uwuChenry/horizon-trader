@@ -13,6 +13,8 @@
 #   18:00 Mon-Fri  evening      shadow + Alpaca daily book + competition sync + ORB fills (IBKR)
 #   18:30 Mon-Fri  health       health report; "all OK" message on a clean day
 #   at logon       dashboard    read-only dashboard on HT_DASHBOARD_HOST
+#   every 5 min    gateway_watchdog  Sun-Fri 07:05-23:30: restarts a dead or frozen IB Gateway
+#                  (install_watchdog.ps1)
 # Tasks run only while this user is logged on (the Gateway needs a desktop anyway): use
 # auto-logon on the mini and lock the screen. Windows are hidden, so closing a console can't
 # kill a job. Failures alert via Discord/ntfy (ops/notify.py).
@@ -61,3 +63,4 @@ Register-ScheduledTask -TaskName "horizon-trader dashboard" -Action $action `
     -Trigger $trigger -Settings $settings -Force | Out-Null
 "registered horizon-trader dashboard (at logon)"
 & "$dir\install_observer.ps1"
+& "$dir\install_watchdog.ps1"

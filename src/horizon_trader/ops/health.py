@@ -65,6 +65,24 @@ def flat_ledgers(data) -> list[dict]:
     return out
 
 
+def watchdog(data, today: date) -> dict:
+    """Gateway restarts by ops.gateway_watchdog today (each one means it was dead or frozen)."""
+    try:
+        state = json.loads((data / "logs" / "gateway_watchdog.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        return {"name": "Gateway watchdog", "status": "warn", "last": None,
+                "detail": "no watchdog state yet (task gateway_watchdog)"}  # fmt: skip
+    n = state.get("restarts", 0) if state.get("day") == today.isoformat() else 0
+    if state.get("gave_up") and state.get("day") == today.isoformat():
+        status, detail = "bad", f"gave up after {n} restarts today"
+    elif n:
+        status, detail = "warn", f"restarted the Gateway {n}x today (data/logs/*-watchdog.log)"
+    else:
+        status, detail = "ok", "no restarts today"
+    return {"name": "Gateway watchdog", "status": status, "detail": detail,
+            "last": state.get("last_restart")}  # fmt: skip
+
+
 def failed_steps(data, today: date) -> dict:
     """Every job step that exited non-zero in today's logs (ops.jobs writes 'name: exit N (')."""
     failed = []
@@ -173,6 +191,7 @@ def health(today: date | None = None, gateway=None) -> list[dict]:
     out.append(check("IBKR option-chain log", _latest_stem(chains), today, 1, "chain snapshot"))
     out.extend(flat_ledgers(data))
     out.append(failed_steps(data, today))
+    out.append(watchdog(data, today))
     obs = observations(5)["last_connection"]
     if gateway is not None:
         out.append({**gateway(), "last": today.isoformat()})
