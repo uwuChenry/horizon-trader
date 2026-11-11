@@ -49,6 +49,11 @@ machines hold the state. The first trading job on the mini is then Monday 08:00.
       `AutoRestartTime` before 07:30 (e.g. `06:45 AM`) so one weekly 2FA lasts all week.
       `config.ini` holds the password in plain text: keep it out of the repo.
 - [ ] A Task Scheduler task *At log on* that runs IBC's `StartGateway.bat`.
+- [ ] If you use Remote Desktop: from an elevated PowerShell run
+      `deploy\windows\install_rdp_console.ps1`. Gateway can't start in a disconnected RDP
+      session (no display, `HeadlessException`), so this moves the session to the console on
+      disconnect. Needs a monitor or dummy plug that stays detected; the desktop is left
+      unlocked on it.
 - [ ] Log in once and approve the 2FA prompt in IBKR Mobile.
 - [ ] **Never run the paper Gateway on both PCs at once**: IBKR allows one session per user.
 
